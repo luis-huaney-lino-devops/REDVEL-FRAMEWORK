@@ -1,0 +1,99 @@
+/* =========================
+   🎨 Variables base (modo claro)
+   ========================= */
+
+:root {
+    --border-radius: 5px;
+    --bg-active: #bbf7d0;
+    /* bg-green-200 */
+    --bg-active-menu: rgba(187, 247, 208, 0.4);
+    /* más transparente */
+    --text-primary: #0f766e;
+    /* text-primary */
+    --border-primary: #0f766e;
+    /* border-primary */
+    --bg-hover: rgba(16, 185, 129, 0.2);
+    /* bg-primary/20 */
+}
+
+
+/* =========================
+   🌙 Variables modo oscuro
+   ========================= */
+
+.dark {
+    --border-radius: 10px;
+    --bg-active: rgba(15, 118, 110, 0.2);
+    /* bg-primary/20 */
+    --bg-active-menu: rgba(15, 118, 110, 0.1);
+    /* más transparente */
+    --text-primary: #5eead4;
+    /* teal claro */
+    --border-primary: #5eead4;
+    --bg-hover: rgba(15, 118, 110, 0.3);
+    /* bg-primary/30 */
+}
+
+
+/* =========================
+   📌 Estilos comunes
+   ========================= */
+
+
+/* Estilos para elementos activos */
+
+.active {
+    background-color: var(--bg-active);
+    color: var(--text-primary);
+    border-left: 4px solid var(--border-primary);
+    border-radius: var(--border-radius);
+}
+
+
+/* Contenedor que contiene un elemento activo (menú desplegado) */
+
+.active-menu {
+    background-color: var(--bg-active-menu);
+    border-radius: var(--border-radius);
+}
+
+
+/* Elementos activos en el menú principal */
+
+.sidebar-menu-button.active {
+    background-color: var(--bg-active);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+}
+
+
+/* Elementos activos en el submenú */
+
+.sidebar-menu-sub-button.active {
+    background-color: var(--bg-active);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+}
+
+
+/* Iconos dentro de elementos activos */
+
+.active svg {
+    color: var(--text-primary);
+}
+
+
+/* Hover sobre elementos activos */
+
+.active:hover {
+    background-color: var(--bg-hover);
+}
+
+
+/* Texto dentro de elementos activos */
+
+.active span {
+    font-weight: 500;
+    /* font-medium */
+    color: var(--text-primary);
+}

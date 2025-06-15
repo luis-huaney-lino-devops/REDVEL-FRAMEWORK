@@ -1,0 +1,13 @@
+:root {
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "Geist Mono", monospace;
+  --color-red-500: oklch(63.7% 0.237 25.331);
+  --font-sans--font-feature-settings: '"ss02", "ss05", "ss09"';
+}
+
+.titulo {
+  color: var(--color-red-500);
+  font-family: var(--font-sans);
+  font-feature-settings: var(--font-sans--font-feature-settings);
+}

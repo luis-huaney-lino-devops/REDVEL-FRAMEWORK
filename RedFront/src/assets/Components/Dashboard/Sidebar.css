@@ -1,0 +1,40 @@
+.contenedor-sidebar {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    /* Para Firefox */
+    scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+
+/* Variables que puedes personalizar */
+
+:root {
+    --scroll-thumb: #94a3b8;
+    /* slate-400 */
+}
+
+.dark {
+    --scroll-thumb: #475569;
+    /* slate-600 (más oscuro para modo dark) */
+}
+
+
+/* Para navegadores basados en WebKit como Chrome, Edge y Safari */
+
+.contenedor-sidebar::-webkit-scrollbar {
+    width: 10px;
+    /* o 4px si quieres más delgado */
+}
+
+.contenedor-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+    /* sin fondo */
+}
+
+.contenedor-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--scroll-thumb);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    /* espacio alrededor del thumb */
+    background-clip: padding-box;
+}
