@@ -73,6 +73,13 @@ export default function Redvel() {
                       <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                     <Button
+                      onClick={() =>
+                        window.open(
+                          "https://github.com/luis-huaney-lino-devops/REDVEL-FRAMEWORK",
+                          "_blank",
+                          "noopener noreferrer"
+                        )
+                      }
                       variant="outline"
                       size="default"
                       className="border-slate-300 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer px-6 py-2"
