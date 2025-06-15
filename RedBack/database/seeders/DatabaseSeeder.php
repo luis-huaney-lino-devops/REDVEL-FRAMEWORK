@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PersonasTableSeeder::class,
             RolesAndPermissionsSeeder::class,
             UsuariosTableSeeder::class,
+            IntalacionTableSeeder::class
         ]);
 
         // User::factory(10)->create();
