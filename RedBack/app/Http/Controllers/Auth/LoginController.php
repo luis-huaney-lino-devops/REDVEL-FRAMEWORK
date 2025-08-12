@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use OpenApi\Annotations as OA;
 use App\Models\Sessione;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
@@ -15,7 +16,70 @@ use Exception;
 class LoginController extends Controller
 {
     /**
-     * Procesar el login del usuario
+     * @OA\Post(
+     *     path="/login",
+     *     tags={"Authentication"},
+     *     summary="User login",
+     *     description="Authenticate user and return JWT token",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"nombre_usuario","password"},
+     *             @OA\Property(property="nombre_usuario", type="string", example="admin"),
+     *             @OA\Property(property="password", type="string", format="password", example="password123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Login successful",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Login exitoso."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="message", type="string", example="Login exitoso."),
+     *                 @OA\Property(property="token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid credentials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Credenciales incorrectas."),
+     *             @OA\Property(property="data", type="object", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Account disabled",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Su cuenta ha sido desactivada. Contacte al administrador."),
+     *             @OA\Property(property="data", type="object", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Datos de entrada inválidos."),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error interno del servidor. Intente nuevamente."),
+     *             @OA\Property(property="data", type="object", nullable=true)
+     *         )
+     *     )
+     * )
      */
     public function login(Request $request)
     {
@@ -26,8 +90,8 @@ class LoginController extends Controller
                 'password'       => 'required|string|min:6',
             ]);
 
-            $nameUserOrEmail =  $request->nombre_usuario;
-            $password =  $request->password;
+            $nameUserOrEmail = $request->nombre_usuario;
+            $password = $request->password;
 
             // 2) Buscar al usuario por nombre de usuario o email
             $usuario = Usuario::where('nomusu', $nameUserOrEmail)
@@ -65,7 +129,7 @@ class LoginController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            // 9) Responder al cliente
+            // 9) Responder al cliente usando el método heredado
             return $this->successResponse([
                 'message' => 'Login exitoso.',
                 'token'   => $token,
@@ -76,7 +140,8 @@ class LoginController extends Controller
                 //     'roles'           => $usuario->getRoleNames(),
                 //     'permisos'        => $usuario->getAllPermissions()->pluck('name'),
                 // ],
-            ]);
+            ], 'Login exitoso.', 200);
+
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos de entrada inválidos.', 422, $e->errors());
         } catch (Exception $e) {
@@ -134,27 +199,5 @@ class LoginController extends Controller
         $token = JWTAuth::customClaims($customClaims)->fromUser($usuario);
 
         return $token;
-    }
-
-    /**
-     * Respuesta de éxito estandarizada
-     */
-    private function successResponse(array $data, int $statusCode = 200)
-    {
-        return response()->json($data, $statusCode);
-    }
-
-    /**
-     * Respuesta de error estandarizada
-     */
-    private function errorResponse(string $message, int $statusCode = 400, array $errors = [])
-    {
-        $response = ['message' => $message];
-
-        if (!empty($errors)) {
-            $response['errors'] = $errors;
-        }
-
-        return response()->json($response, $statusCode);
     }
 }

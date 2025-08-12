@@ -10,11 +10,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "darkaonline/l5-swagger": "^9.0",
+        "google/apiclient": "^2.18",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "reliese/laravel": "^1.4",
         "spatie/laravel-permission": "^6.18",
+        "stichoza/google-translate-php": "^5.3",
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ValidateController;
+use App\Http\Controllers\Traduccion\TraduccionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,8 @@ Route::get('/health', function () {
 });
 
 route::post('/login', [LoginController::class, 'login']);
+// Traducción pública
+Route::post('/traduccion', [TraduccionController::class, 'traducir']);
 
 Route::middleware(['check.jwt'])->group(function () {
 

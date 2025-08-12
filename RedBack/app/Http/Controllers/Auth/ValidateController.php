@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use OpenApi\Annotations as OA;
 use Illuminate\Http\Request;
 use App\Models\Usuario;
 use Exception;
@@ -18,6 +19,39 @@ use Illuminate\Support\Facades\DB;
 class ValidateController extends Controller
 {
 
+    /**
+     * @OA\Post(
+     *     path="/verificar-token",
+     *     tags={"Authentication"},
+     *     summary="Verify JWT token",
+     *     description="Validate if the provided JWT token is valid",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token is valid",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="valid", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Token válido")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Token is invalid or not provided",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="valid", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Token inválido")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Too many attempts",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="valid", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Demasiados intentos. Por favor espere X segundos.")
+     *         )
+     *     )
+     * )
+     */
     public function verificarToken(Request $request)
     {
         // Obtener la IP del cliente
@@ -92,6 +126,43 @@ class ValidateController extends Controller
 
         return $token;
     }
+    /**
+     * @OA\Post(
+     *     path="/renovar-token",
+     *     tags={"Authentication"},
+     *     summary="Refresh JWT token",
+     *     description="Generate a new JWT token using the current valid token",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"codigoUsuario"},
+     *             @OA\Property(property="codigoUsuario", type="string", example="abc123def456")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token refreshed successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Token renovado exitosamente"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid token or user code",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Token inválido o código de usuario incorrecto")
+     *         )
+     *     )
+     * )
+     */
     public function renovarToken(Request $request)
     {
         try {
@@ -134,6 +205,46 @@ class ValidateController extends Controller
             ], 500);
         }
     }
+    /**
+     * @OA\Post(
+     *     path="/logout",
+     *     tags={"Authentication"},
+     *     summary="Logout user",
+     *     description="Invalidate current JWT token and rotate user code",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"codigo_usuario"},
+     *             @OA\Property(property="codigo_usuario", type="string", example="abc123def456")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Logout successful",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Sesión cerrada correctamente."),
+     *             @OA\Property(property="status", type="boolean", example=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid token or user code",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Código de usuario no coincide."),
+     *             @OA\Property(property="status", type="boolean", example=false)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Usuario no encontrado."),
+     *             @OA\Property(property="status", type="boolean", example=false)
+     *         )
+     *     )
+     * )
+     */
     public function LogOut(Request $request)
     {
         try {

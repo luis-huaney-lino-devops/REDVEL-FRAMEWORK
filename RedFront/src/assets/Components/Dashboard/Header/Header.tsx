@@ -43,75 +43,77 @@ export default function HeaderDashboard() {
 
   //   setUserData({ fotoPerfil, nombreUsuario });
   // }, []);
-
+  // <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 transition-all ease-in-out duration-200">
   return (
-    // <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 transition-all ease-in-out duration-200">
-    <header className="flex h-16 shrink-0 items-center  justify-between gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-      {/* Izquierda: Sidebar y Breadcrumb */}
-      <div className="flex items-center gap-2 px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem className="hidden md:block">
-              <CommandMenu />
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
+    <div className="sticky top-0 z-10 w-full bg-background/95">
+      {/* <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 transition-all ease-in-out duration-200">*/}
+      <header className="flex h-16 shrink-0 items-center  justify-between gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        {/* Izquierda: Sidebar y Breadcrumb */}
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <CommandMenu />
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
 
-      {/* Derecha: Tema, Usuario y Opciones */}
+        {/* Derecha: Tema, Usuario y Opciones */}
 
-      <div className="flex items-center gap-1">
-        {/* Botón para cambiar tema */}
-        {/* <Notificaciones /> */}
-        <HeaderTokenTimer />
-        <ThemeToggle />
-        {/* <CountdownTimer /> */}
-        {/* Menú desplegable del usuario */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="relative foto_user flex items-center gap-2 px-4 py-2 hover:bg-accent rounded-lg transition-colors"
-            >
-              <div className=" h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <LazyLoadImage
-                  className="rounded-full"
-                  src={"https://placehold.co/500?text=Luis&font=roboto"}
-                  // {/* {userData.nombreUsuario} */}
-                  alt={"Usuario"}
-                />
-              </div>
-              <span className="nombre_header font-medium">
-                {/* {userData.nombreUsuario} */}
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
+        <div className="flex items-center gap-1">
+          {/* Botón para cambiar tema */}
+          {/* <Notificaciones /> */}
+          <HeaderTokenTimer />
+          <ThemeToggle />
+          {/* <CountdownTimer /> */}
+          {/* Menú desplegable del usuario */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="relative foto_user flex items-center gap-2 px-4 py-2 hover:bg-accent rounded-lg transition-colors"
+              >
+                <div className=" h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <LazyLoadImage
+                    className="rounded-full"
+                    src={"https://placehold.co/500?text=Luis&font=roboto"}
+                    // {/* {userData.nombreUsuario} */}
+                    alt={"Usuario"}
+                  />
+                </div>
+                <span className="nombre_header font-medium">
+                  {/* {userData.nombreUsuario} */}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end">
-            {/* Perfil */}
-            <Link to={`/configuracion/perfil`}>
-              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                <UserCircle className="h-4 w-4" />
-                <span>Perfil</span>
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuContent align="end">
+              {/* Perfil */}
+              <Link to={`/configuracion/perfil`}>
+                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                  <UserCircle className="h-4 w-4" />
+                  <span>Perfil</span>
+                </DropdownMenuItem>
+              </Link>
 
-            {/* Cuenta */}
-            <Link to={`/configuracion/cuenta`}>
-              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                <Settings className="h-4 w-4" />
-                <span>Cuenta</span>
-              </DropdownMenuItem>
-            </Link>
+              {/* Cuenta */}
+              <Link to={`/configuracion/cuenta`}>
+                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
+                  <Settings className="h-4 w-4" />
+                  <span>Cuenta</span>
+                </DropdownMenuItem>
+              </Link>
 
-            <DropdownMenuSeparator />
-            {/* Cerrar sesión */}
-            <BotonCerrarSesion />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+              <DropdownMenuSeparator />
+              {/* Cerrar sesión */}
+              <BotonCerrarSesion />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+    </div>
   );
 }
