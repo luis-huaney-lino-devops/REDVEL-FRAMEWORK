@@ -167,7 +167,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'config.conceptos_cambio',
         ];
 
+
         // 15. DOCUMENTOS Y ACTAS
+
         $documentosPermissions = [
             'documentos.view',
             'documentos.create',

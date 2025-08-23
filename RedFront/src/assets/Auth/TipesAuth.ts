@@ -16,8 +16,12 @@ export interface User {
 }
 
 export interface LoginResponse {
+  success: boolean;
   message: string;
-  token: string;
+  data: {
+    token: string;
+    message: string;
+  };
 }
 
 export interface TokenVerificationResponse {

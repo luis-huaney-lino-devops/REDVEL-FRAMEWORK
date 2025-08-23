@@ -85,9 +85,19 @@ export function LoginPage() {
         }
       );
 
-      const data = response.data;
+      const data = response.data.data;
+      const success = response.data.success;
       const decodedToken = jwtDecode<DecodedToken>(data.token);
+      if (!success) {
+        console.error("❌ Login falló según el servidor:", data.message);
+        throw new Error(data.message || "Login falló");
+      }
 
+      // Verificar que existe el token
+      if (!data?.token) {
+        console.error("❌ No se recibió token en la respuesta:", data);
+        throw new Error("No se recibió token de autenticación");
+      }
       // Configurar las cookies
       const cookieOptions = {
         expires: new Date((decodedToken.exp || 0) * 1000),
@@ -99,6 +109,12 @@ export function LoginPage() {
       // Guardar información en cookies
       Cookies.set("token", data.token, cookieOptions);
       // Cookies.set("id_user", decodedToken.id_user.toString(), cookieOptions);
+      Cookies.set(
+        "nombre_usuario",
+        decodedToken.nombre_de_usuario,
+        cookieOptions
+      );
+      Cookies.set("token", data.token, cookieOptions);
       Cookies.set(
         "nombre_usuario",
         decodedToken.nombre_de_usuario,
