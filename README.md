@@ -1,17 +1,32 @@
-# REDVEL FRAMEWORK
-
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/luis-huaney-lino-devops/REDVEL-FRAMEWORK/2bba4caeea635812a1972124326697754dac2fdb/RedBack/public/logo/Redvel.svg" width="150" height="150" style="border-radius: 50%; border: 3px solid red;">
+# 🚀 REDVEL FRAMEWORK
 
-**Framework Full Stack Moderno para Desarrollo Web Rápido y Escalable**
+<img src="https://raw.githubusercontent.com/luis-huaney-lino-devops/REDVEL-FRAMEWORK/2bba4caeea635812a1972124326697754dac2fdb/RedBack/public/logo/Redvel.svg" width="200" height="200" style="border-radius: 50%; box-shadow: 0 20px 40px rgba(255, 45, 32, 0.3); border: 4px solid #FF2D20;">
 
-[![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+<h3 style="background: linear-gradient(135deg, #FF2D20, #FF6B35); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.8em; font-weight: bold; margin: 20px 0;">
+Framework Full Stack Moderno para Desarrollo Web Rápido y Escalable
+</h3>
+
+<p style="font-size: 1.2em; color: #666; margin-bottom: 30px;">
+Construye aplicaciones web modernas con la potencia de Laravel y React
+</p>
+
+---
+
+## 🏷️ Tecnologías
+
+<div style="display: flex; justify-content: center; gap: 10px; flex-rap: wrap; margin: 20px 0;">
+
+[![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=for-the-badge&logo=laravel&logoColor=white&labelColor=1a1a1a)](https://laravel.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black&labelColor=1a1a1a)](https://reactjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white&labelColor=1a1a1a)](https://www.typescriptlang.org)
+[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white&labelColor=1a1a1a)](https://php.net)
+[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?style=for-the-badge&logo=vite&logoColor=white&labelColor=1a1a1a)](https://vitejs.dev)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.0-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white&labelColor=1a1a1a)](https://tailwindcss.com)
 
 </div>
+
 
 ---
 
