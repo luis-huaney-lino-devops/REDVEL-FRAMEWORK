@@ -1,0 +1,19 @@
+# =====================================================
+# MODO DE DESPLIEGUE
+# =====================================================
+# Valores posibles: development | production
+#
+# development: Modo desarrollo con debug activado, BD separada, puertos expuestos
+# production: Modo producción optimizado, BD separada, seguridad reforzada
+# =====================================================
+DEPLOY_MODE=development
+
+# =====================================================
+# 🚨 CONTROL DE INSTALACIÓN (MUY IMPORTANTE)
+# =====================================================
+# true  = Primera instalación (crea BD, migraciones, seeders, todo)
+# false = Actualización (solo limpia cache, NO toca la BD)
+#
+# ⚠️  Después del primer deploy exitoso, CAMBIA A false
+# =====================================================
+PRIMERA_INSTALACION=true

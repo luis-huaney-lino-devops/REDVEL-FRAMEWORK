@@ -1,0 +1,282 @@
+# =====================================================
+# DOCKER COMPOSE PARA DESARROLLO (REDVEL FRAMEWORK)
+# VPS: 2 CPU, 8GB RAM, 100GB Disco
+# =====================================================
+
+services:
+  # ===================================================
+  # APLICACIÓN BACKEND (PHP + Nginx) - DESARROLLO
+  # ===================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redvel-app-dev
+    restart: unless-stopped
+    ports:
+      - "9091:80"
+    environment:
+      - APP_ENV=local
+      - PRIMERA_INSTALACION=${PRIMERA_INSTALACION:-true}
+      - APP_URL=http://localhost:9091
+      - DEPLOY_MODE=development
+    env_file:
+      - RedBack/.env.developer
+    volumes:
+      - app-storage-dev:/var/www/html/storage
+      - app-bootstrap-dev:/var/www/html/bootstrap/cache
+      - ./RedBack:/var/www/html
+    depends_on:
+      mysql-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+      elasticsearch-dev:
+        condition: service_healthy
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+
+  # ===================================================
+  # FRONTEND (React + Nginx) - DESARROLLO
+  # ===================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: redvel-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "9090:80"
+    depends_on:
+      - app
+    volumes:
+      - ./RedFront:/app
+      - /app/node_modules
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===================================================
+  # MYSQL 8.0 - Base de Datos DESARROLLO
+  # ===================================================
+  mysql-dev:
+    image: mysql:8.0
+    container_name: redvel-mysql-dev
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=200
+      - --default-authentication-plugin=mysql_native_password
+      - --bind-address=0.0.0.0
+    environment:
+      MYSQL_ROOT_PASSWORD: RedVelRootDev2025!
+      MYSQL_DATABASE: redvel_dev
+      # MYSQL_USER y PASSWORD eliminados
+    ports:
+      - "3307:3306" # Puerto externo para desarrollo
+    volumes:
+      - mysql-data-dev:/var/lib/mysql
+      - ./docker/mysql-init/01-init-dev.sql:/docker-entrypoint-initdb.d/01-init-dev.sql
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ===================================================
+  # REDIS - Cache y Sesiones DESARROLLO
+  # ===================================================
+  redis-dev:
+    image: redis:7-alpine
+    container_name: redvel-redis-dev
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379" # Puerto externo para desarrollo
+    volumes:
+      - redis-data-dev:/data
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 400M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ===================================================
+  # ELASTICSEARCH - Búsqueda DESARROLLO
+  # ===================================================
+  elasticsearch-dev:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: redvel-elasticsearch-dev
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - bootstrap.memory_lock=true
+      - cluster.name=redvel-cluster-dev
+      - node.name=redvel-node-dev
+    ports:
+      - "9200:9200" # Puerto externo para desarrollo
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - elasticsearch-data-dev:/usr/share/elasticsearch/data
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\\|yellow\"'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ===================================================
+  # QUEUE WORKER - DESARROLLO
+  # ===================================================
+  queue-worker-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redvel-queue-dev
+    restart: unless-stopped
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+    env_file:
+      - RedBack/.env.developer
+    volumes:
+      - app-storage-dev:/var/www/html/storage
+      - ./RedBack:/var/www/html
+    depends_on:
+      mysql-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  # ===================================================
+  # SCHEDULER - DESARROLLO
+  # ===================================================
+  scheduler-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: redvel-scheduler-dev
+    restart: unless-stopped
+    command: >
+      sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    env_file:
+      - RedBack/.env.developer
+    volumes:
+      - app-storage-dev:/var/www/html/storage
+      - ./RedBack:/var/www/html
+    depends_on:
+      mysql-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+    networks:
+      - redvel-network-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+# =====================================================
+# REDES
+# =====================================================
+networks:
+  redvel-network-dev:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+# =====================================================
+# VOLÚMENES PERSISTENTES
+# =====================================================
+volumes:
+  mysql-data-dev:
+    driver: local
+  redis-data-dev:
+    driver: local
+  elasticsearch-data-dev:
+    driver: local
+  app-storage-dev:
+    driver: local
+  app-bootstrap-dev:
+    driver: local

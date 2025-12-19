@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Archivos de desarrollo
+.env
+.env.local
+.env.development
+
+
+.env copy.example
+
+# Tests
+tests
+phpunit.xml
+phpunit.xml.dist
+.phpunit.result.cache
+
+# Archivos de documentación
+*.md
+!README.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+UPGRADE.md
+
+# Archivos de build
+bagisto-*.zip
+marketplace-*.zip
+
+# Logs
+*.log
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Cache local
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+
+# Archivos temporales
+storage/app/public/*
+!storage/app/public/.gitkeep
+
+# Debugbar
+storage/debugbar/*
+
+# Vendor development files
+vendor/*/tests
+vendor/*/docs
+vendor/*/.git
+
+# Docker development
+docker-compose.override.yml
