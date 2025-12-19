@@ -169,7 +169,7 @@ export default function Dashboar_Stats() {
                     `${name} ${(percent * 100).toFixed(0)}%`
                   }
                 >
-                  {distribucionConsumo.map((entry, index) => (
+                  {distribucionConsumo.map((_entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}

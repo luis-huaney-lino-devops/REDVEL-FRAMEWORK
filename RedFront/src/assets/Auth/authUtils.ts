@@ -213,8 +213,9 @@ export const login = async (credentials: UserCredentials): Promise<boolean> => {
       }
     );
 
-    const data = response.data;
-    const decodedToken = jwtDecode<DecodedToken>(data.token);
+    const loginResponse = response.data;
+    const token = loginResponse.data.token;
+    const decodedToken = jwtDecode<DecodedToken>(token);
 
     const cookieOptions = {
       expires: new Date((decodedToken.exp || 0) * 1000),
@@ -224,7 +225,7 @@ export const login = async (credentials: UserCredentials): Promise<boolean> => {
     };
 
     // Guardar información en cookies
-    Cookies.set("token", data.token, cookieOptions);
+    Cookies.set("token", token, cookieOptions);
     Cookies.set(
       "nombre_usuario",
       decodedToken.nombre_de_usuario,
