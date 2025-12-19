@@ -6,9 +6,6 @@
 FROM composer:2.7 AS composer-deps
 WORKDIR /app
 COPY RedBack/composer.json RedBack/composer.lock ./
-# Copy packages if they exist (ignoring if not is hard in Docker without careful COPY, but we assume structure)
-# We copy the whole packages folder from RedBack if user has custom packages
-COPY RedBack/packages/ ./packages/ 
 RUN composer install \
     --no-dev \
     --no-interaction \
@@ -24,7 +21,6 @@ COPY RedBack/package.json ./
 RUN npm install
 COPY RedBack/vite.config.js ./
 COPY RedBack/resources/ ./resources/
-COPY RedBack/packages/ ./packages/
 COPY RedBack/public/ ./public/
 RUN npm run build || true
 
