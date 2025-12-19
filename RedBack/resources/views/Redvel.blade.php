@@ -340,7 +340,7 @@
                             <!-- Logo -->
                             <div
                                 class="w-20 h-20 lg:w-24 lg:h-24 mx-auto bg-white/20 dark:bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30 dark:border-white/20 animate-bounce-in animation-delay-200">
-                                <?xml ?>
+                 
                                 <!DOCTYPE svg
                                     PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
                                 <!-- Creator: CorelDRAW 2019 (64-Bit) -->

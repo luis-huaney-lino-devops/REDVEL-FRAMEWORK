@@ -196,6 +196,12 @@ if [ "$PRIMERA_INSTALACION" = "true" ]; then
         
         log_info "🌱 Ejecutando seeders..."
         run_artisan "db:seed --force" || log_warning "Error en seeders, continuando..."
+
+        log_info "📝 Registrando instalación en base de datos..."
+        # Insertar registro de instalación para evitar redirección a /install
+        $MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
+             $SSL_ARGS -D"$DB_DATABASE" \
+             -e "INSERT INTO instalacion (estado_instalacion) VALUES (1);" || log_warning "No se pudo registrar la instalación en la tabla 'instalacion'."
     else
         log_warning "Tablas ya existen, saltando migración inicial."
     fi
