@@ -129,6 +129,30 @@ chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 # CONFIGURACIÓN DE ENTORNO
 # =====================================================
 
+# =====================================================
+# LECTURA DE CONFIGURACIÓN (.deploy-mode)
+# =====================================================
+
+DEPLOY_MODE_FILE="/etc/redvel/.deploy-mode"
+
+if [ -f "$DEPLOY_MODE_FILE" ]; then
+    log_info "📄 Leyendo configuración de $DEPLOY_MODE_FILE"
+    
+    # Leer variables del archivo ignorando comentarios
+    FILE_DEPLOY_MODE=$(grep "^DEPLOY_MODE=" "$DEPLOY_MODE_FILE" | cut -d '=' -f2)
+    FILE_FIRST_INSTALL=$(grep "^PRIMERA_INSTALACION=" "$DEPLOY_MODE_FILE" | cut -d '=' -f2)
+    
+    if [ -n "$FILE_DEPLOY_MODE" ]; then
+        DEPLOY_MODE="$FILE_DEPLOY_MODE"
+    fi
+    
+    if [ -n "$FILE_FIRST_INSTALL" ]; then
+        PRIMERA_INSTALACION="$FILE_FIRST_INSTALL"
+    fi
+else
+    log_warning "⚠️ Archivo .deploy-mode no encontrado en $DEPLOY_MODE_FILE"
+fi
+
 if [ ! -f ".env" ]; then
     DEPLOY_MODE="${DEPLOY_MODE:-production}"
     if [ "$DEPLOY_MODE" = "development" ] && [ -f ".env.developer" ]; then

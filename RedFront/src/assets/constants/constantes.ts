@@ -2,8 +2,8 @@
 // const baseUrlBackend: string = "https://unasam-certificados-backend.tutec.pe";
 
 const ModeProduccion: boolean = true;
-const baseUrl: string = "http://localhost:3000";
-const baseUrlBackend: string = "http://localhost:8000";
+const baseUrl: string = "http://168.231.90.23:9090";
+const baseUrlBackend: string = "http://168.231.90.23:9091";
 const TOKEN_CHECK_INTERVAL: number = 600000; // cada 10 minutos
 
 const SESSION_EXPIRY_WARNING: number = 5 * 60;

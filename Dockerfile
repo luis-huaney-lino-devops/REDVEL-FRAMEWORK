@@ -88,7 +88,13 @@ RUN echo 'memory_limit=512M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.in
 RUN sed -i 's/pm.max_children = 5/pm.max_children = 50/g' /usr/local/etc/php-fpm.d/www.conf \
     && sed -i 's/pm.start_servers = 2/pm.start_servers = 10/g' /usr/local/etc/php-fpm.d/www.conf \
     && sed -i 's/pm.min_spare_servers = 1/pm.min_spare_servers = 5/g' /usr/local/etc/php-fpm.d/www.conf \
-    && sed -i 's/pm.max_spare_servers = 3/pm.max_spare_servers = 20/g' /usr/local/etc/php-fpm.d/www.conf
+    && sed -i 's/pm.max_spare_servers = 3/pm.max_spare_servers = 20/g' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's/^;listen = .*/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf
+
+# Fix Nginx permissions for www-data
+RUN mkdir -p /var/lib/nginx/tmp /var/log/nginx \
+    && chown -R www-data:www-data /var/lib/nginx /var/log/nginx
 
 # Instalar Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
