@@ -16,4 +16,4 @@ DEPLOY_MODE=development
 #
 # ⚠️  Después del primer deploy exitoso, CAMBIA A false
 # =====================================================
-PRIMERA_INSTALACION=true
+PRIMERA_INSTALACION=false
