@@ -65,6 +65,9 @@ sleep 5
 if command -v mariadb >/dev/null 2>&1; then
     MYSQL_CMD="mariadb"
     SSL_ARGS="--skip-ssl"
+elif mysql --version 2>&1 | grep -q "MariaDB"; then
+    MYSQL_CMD="mysql"
+    SSL_ARGS="--skip-ssl"
 else
     MYSQL_CMD="mysql"
     SSL_ARGS="--ssl-mode=DISABLED"
