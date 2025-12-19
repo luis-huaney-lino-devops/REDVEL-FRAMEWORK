@@ -14,10 +14,10 @@ services:
     container_name: redvel-app-prod
     restart: unless-stopped
     ports:
-      - "9090:80"
+      - "9091:80"
     environment:
       - APP_ENV=production
-      - APP_URL=http://168.231.90.23:9090
+      - APP_URL=http://168.231.90.23:9091
     env_file:
       - RedBack/.env.production
     volumes:
@@ -60,7 +60,7 @@ services:
     container_name: redvel-frontend-prod
     restart: unless-stopped
     ports:
-      - "9091:80"
+      - "9090:80"
     depends_on:
       - app
     networks:

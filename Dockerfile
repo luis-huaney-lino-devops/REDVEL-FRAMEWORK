@@ -82,7 +82,7 @@ RUN echo 'memory_limit=512M' >> /usr/local/etc/php/conf.d/docker-php-memlimit.in
     && echo 'upload_max_filesize=100M' >> /usr/local/etc/php/conf.d/docker-php-uploads.ini \
     && echo 'post_max_size=100M' >> /usr/local/etc/php/conf.d/docker-php-uploads.ini \
     && echo 'max_execution_time=300' >> /usr/local/etc/php/conf.d/docker-php-limits.ini \
-    && echo 'max_input_time=300' >> /usr/local/etc/php/conf.d/docker-php-limits.ini \
+    && echo 'max_input_time=300' >> /usr/local/etc/php/conf.d/docker-php-limits.ini
 
 # Configurar PHP-FPM pool
 RUN sed -i 's/pm.max_children = 5/pm.max_children = 50/g' /usr/local/etc/php-fpm.d/www.conf \
