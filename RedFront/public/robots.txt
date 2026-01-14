@@ -1,0 +1,48 @@
+# Robots.txt 
+# Generado automáticamente - NO editar manualmente
+# Este archivo se regenera en cada build
+
+User-agent: *
+Allow: /
+
+# Permitir acceso específico a los principales motores de búsqueda
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Bloquear acceso a archivos y directorios administrativos/técnicos
+Disallow: /admin/
+Disallow: /api/
+Disallow: /.env
+Disallow: /config/
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /*.json$
+Disallow: /*.log$
+
+# Bloquear rutas protegidas (requieren autenticación)
+Disallow: /dashboard
+Disallow: /inicio
+Disallow: /usuarios/
+Disallow: /empleados/
+Disallow: /inicios
+Disallow: /prueba
+Disallow: /403
+
+# Permitir acceso a recursos importantes para SEO
+Allow: /public/
+Allow: /assets/
+Allow: /images/
+Allow: /css/
+Allow: /js/
+
+# Especificar la ubicación del sitemap
+Sitemap: http://localhost:3000/sitemap.xml
+
+# Crawl-delay para evitar sobrecarga del servidor
+Crawl-delay: 1

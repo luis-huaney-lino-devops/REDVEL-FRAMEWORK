@@ -20,56 +20,58 @@ class UsuariosTableSeeder extends Seeder
                 'estado' => true,
                 'nomusu' => 'jgarcia',
                 'password' => bcrypt('password123'),
+                'tipo_autenticacion' => 'local',
                 'fk_idpersonas' => 1,
+                'fecha_creacion' => now(),
+                'fecha_ultimo_acceso' => now(),
             ],
             [
                 'codigo_usuario' => 'USR002',
                 'estado' => true,
                 'nomusu' => 'amartinez',
                 'password' => bcrypt('password123'),
+                'tipo_autenticacion' => 'local',
                 'fk_idpersonas' => 2,
+                'fecha_creacion' => now(),
+                'fecha_ultimo_acceso' => now(),
             ],
             [
                 'codigo_usuario' => 'USR003',
                 'estado' => true,
                 'nomusu' => 'lramirez',
                 'password' => bcrypt('password123'),
+                'tipo_autenticacion' => 'local',
                 'fk_idpersonas' => 3,
+                'fecha_creacion' => now(),
+                'fecha_ultimo_acceso' => now(),
             ],
             [
                 'codigo_usuario' => 'USR004',
                 'estado' => false,
                 'nomusu' => 'mvargas',
                 'password' => bcrypt('password123'),
+                'tipo_autenticacion' => 'local',
                 'fk_idpersonas' => 4,
+                'fecha_creacion' => now(),
+                'fecha_ultimo_acceso' => now(),
             ],
             [
                 'codigo_usuario' => 'USR005',
                 'estado' => true,
                 'nomusu' => 'crojas',
                 'password' => bcrypt('password123'),
+                'tipo_autenticacion' => 'local',
                 'fk_idpersonas' => 5,
+                'fecha_creacion' => now(),
+                'fecha_ultimo_acceso' => now(),
             ],
         ]);
 
         $user = Usuario::find(1);
-        $user->assignRole('superadmin');
+        $user->assignRole('administrador');
         $user = Usuario::find(2);
-        $user->assignRole('presidente');
+        $user->assignRole('operador');
         $user = Usuario::find(3);
-        $user->assignRole('tesorero');
-        $user = Usuario::find(4);
-        $user->assignRole('secretario');
-        $user = Usuario::find(5);
-        $user->assignRole('contador');
-
-        // presidente
-        // superadmin
-        // tesorero
-        // secretario
-        // vocal
-        // administrador
-        // operador
-        // contador
+        $user->assignRole('rrhh');
     }
 }

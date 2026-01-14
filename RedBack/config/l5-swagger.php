@@ -65,10 +65,10 @@ return [
              * Middleware allows to prevent unexpected access to API documentation
              */
             'middleware' => [
-                // Apply env-gated middleware to control access to Swagger
-                'api' => [\App\Http\Middleware\EnsureSwaggerEnabled::class],
-                'asset' => [\App\Http\Middleware\EnsureSwaggerEnabled::class],
-                'docs' => [\App\Http\Middleware\EnsureSwaggerEnabled::class],
+                // Apply env-gated middleware to control access to API Documentation
+                'api' => [\App\Http\Middleware\EnsureApiDocEnabled::class],
+                'asset' => [\App\Http\Middleware\EnsureApiDocEnabled::class],
+                'docs' => [\App\Http\Middleware\EnsureApiDocEnabled::class],
                 'oauth2_callback' => [],
             ],
 
@@ -111,14 +111,14 @@ return [
             'default_processors_configuration' => [
                 /** Example */
                 /**
-                 * 'operationId.hash' => true,
-                 * 'pathFilter' => [
-                 * 'tags' => [
-                 * '/pets/',
-                 * '/store/',
-                 * ],
-                 * ],.
-                 */
+             * 'operationId.hash' => true,
+             * 'pathFilter' => [
+             * 'tags' => [
+             * '/pets/',
+             * '/store/',
+             * ],
+             * ],.
+             */
             ],
 
             /**
@@ -215,8 +215,7 @@ return [
                     'name' => 'Authorization', // The name of the header or query parameter to be used.
                     'in' => 'header', // The location of the API key. Valid values are "query" or "header".
                 ],
-                */
-            ],
+                */],
             'security' => [
                 /*
                  * Examples of Securities
@@ -229,8 +228,7 @@ return [
                     ],
 
                     'passport' => []
-                    */
-                ],
+                    */],
             ],
         ],
 

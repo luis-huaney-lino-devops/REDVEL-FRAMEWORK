@@ -141,7 +141,6 @@ class LoginController extends Controller
                 //     'permisos'        => $usuario->getAllPermissions()->pluck('name'),
                 // ],
             ], 'Login exitoso.', 200);
-
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos de entrada inválidos.', 422, $e->errors());
         } catch (Exception $e) {
@@ -178,21 +177,22 @@ class LoginController extends Controller
 
     /**
      * Generar token JWT con claims personalizados
+     *
+     * IMPORTANTE: No incluir permisos en el token JWT por seguridad y tamaño.
+     * El token solo debe contener información mínima necesaria para autenticación.
+     * Los permisos se obtienen mediante el endpoint /user/permissions
      */
     private function generateJwtToken(Usuario $usuario): string
     {
-        $tiempoMinutos = intval(env('TIEMPOSECION', 60));
+        // No establecer exp manualmente, JWT Auth lo maneja automáticamente
+        // El tiempo de expiración se configura en config/jwt.php (ttl)
 
-        // Definir custom claims con toda la información del usuario
+        // Los custom claims mínimos se obtienen del método getJWTCustomClaims() del modelo
+        // Solo añadimos información adicional mínima si es absolutamente necesaria
         $customClaims = [
-            'id_user'           => $usuario->idusuarios,
+            'id_user' => $usuario->idusuarios,
             'nombre_de_usuario' => $usuario->nomusu,
-            'foto_perfil'      => $usuario->persona->fotografia ?? null,
-            // 'roles'            => $usuario->getRoleNames(),
-            // 'permisos'         => $usuario->getAllPermissions()->pluck('name'),
-            'codigo_usuario'   => $usuario->codigo_usuario,
-            'exp' => now()->addMinutes($tiempoMinutos)->timestamp
-            // Agregar información de la persona si está disponible
+            'foto_perfil' => $usuario->persona->fotografia ?? null,
         ];
 
         // Crear el token con custom claims

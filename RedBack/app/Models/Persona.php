@@ -59,15 +59,6 @@ class Persona extends Model
         return $this->belongsTo(Genero::class, 'fk_idgeneros');
     }
 
-    public function empadronados()
-    {
-        return $this->hasMany(Empadronado::class, 'fk_idpersonas');
-    }
-
-    public function familiares()
-    {
-        return $this->hasMany(Familiare::class, 'fk_idpersonas');
-    }
 
     public function usuarios()
     {

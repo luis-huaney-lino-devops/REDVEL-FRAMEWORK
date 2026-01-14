@@ -13,7 +13,7 @@ import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import axios, { AxiosError } from "axios";
@@ -23,6 +23,7 @@ import type {
   LoginResponse,
   DecodedToken,
 } from "@/assets/Auth/TipesAuth";
+import { checkSession, decodeRedirectPath } from "@/assets/Auth/authUtils";
 
 export function LoginPage() {
   const [credentials, setCredentials] = useState<UserCredentials>({
@@ -33,6 +34,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Input validation function
   const validateInput = (input: string): boolean => {
@@ -59,6 +61,20 @@ export function LoginPage() {
       document.title = "Redvel Framework";
     };
   }, []);
+
+  // Verificar si ya está logueado y redirigir
+  useEffect(() => {
+    if (checkSession()) {
+      // Obtener la ruta de redirección de forma segura
+      const redirectParam = searchParams.get("redirect");
+      const redirectPath = redirectParam
+        ? decodeRedirectPath(redirectParam)
+        : null;
+
+      // Redirigir a la ruta indicada o a /inicio por defecto
+      navigate(redirectPath || "/inicio", { replace: true });
+    }
+  }, [navigate, searchParams]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -108,13 +124,6 @@ export function LoginPage() {
 
       // Guardar información en cookies
       Cookies.set("token", data.token, cookieOptions);
-      // Cookies.set("id_user", decodedToken.id_user.toString(), cookieOptions);
-      Cookies.set(
-        "nombre_usuario",
-        decodedToken.nombre_de_usuario,
-        cookieOptions
-      );
-      Cookies.set("token", data.token, cookieOptions);
       Cookies.set(
         "nombre_usuario",
         decodedToken.nombre_de_usuario,
@@ -122,12 +131,15 @@ export function LoginPage() {
       );
       Cookies.set("foto_perfil", decodedToken.foto_perfil || "", cookieOptions);
       Cookies.set("codigo_usuario", decodedToken.codigo_usuario, cookieOptions);
-      Cookies.set("rol", JSON.stringify(decodedToken.roles), cookieOptions);
-      // Cookies.set(
-      //   "permisos",
-      //   JSON.stringify(decodedToken.permissions),
-      //   cookieOptions
-      // );
+
+      // Obtener permisos después del login
+      try {
+        const { getPermissions } = await import("@/assets/Auth/permissionsService");
+        await getPermissions(true); // Force refresh después del login
+      } catch (error) {
+        console.warn("No se pudieron obtener permisos después del login:", error);
+        // No fallar el login si no se pueden obtener permisos
+      }
 
       toast.dismiss(loadingToast);
       toast.success(`¡Bienvenido, ${decodedToken.nombre_de_usuario}!`);
@@ -135,8 +147,15 @@ export function LoginPage() {
       // Deshabilitar el botón después del login exitoso
       setIsLoggedIn(true);
 
+      // Obtener la ruta de redirección de forma segura
+      const redirectParam = searchParams.get("redirect");
+      const redirectPath = redirectParam
+        ? decodeRedirectPath(redirectParam)
+        : null;
+
       setTimeout(() => {
-        navigate("/inicio");
+        // Redirigir a la ruta indicada o a /inicio por defecto
+        navigate(redirectPath || "/inicio", { replace: true });
       }, 1000);
     } catch (err) {
       toast.dismiss(loadingToast);

@@ -61,6 +61,8 @@ _"Desarrollé REDVEL para simplificar la creación de aplicaciones web robustas 
 - [👥 Roles y Permisos](#-sistema-de-permisos-y-roles)
 - [🎨 Frontend](#-frontend---redfront)
 - [🔧 Backend](#-backend---redback)
+- [🔧 Backend - Guía Completa](#backend---redback---guía-completa)
+- [🎨 Frontend - Guía Completa](#frontend---redfront---guía-completa)
 - [💾 Sistema de Caché](#-sistema-de-caché)
 - [🛡️ Protección de Rutas](#️-protección-de-rutas)
 - [🌐 Traducción](#-traducción-automática)
@@ -175,6 +177,170 @@ graph TD
 ```
 
 </div>
+
+### Flujo de Autenticación y Autorización
+
+El siguiente diagrama muestra el flujo completo de autenticación y verificación de permisos en REDVEL:
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant F as Frontend React
+    participant B as Backend Laravel
+    participant JWT as JWT Middleware
+    participant P as Permission Middleware
+    participant DB as Base de Datos
+
+    U->>F: Ingresa credenciales
+    F->>B: POST /api/login
+    B->>DB: Verificar usuario
+    DB-->>B: Usuario válido
+    B->>DB: Obtener roles y permisos
+    DB-->>B: Datos de autorización
+    B-->>F: JWT Token + Permisos
+    F->>F: Guardar en localStorage
+
+    Note over F,B: Request autenticado
+    F->>B: API Request + JWT Header
+    B->>JWT: Verificar token
+    JWT->>DB: Validar usuario activo
+    DB-->>JWT: Usuario válido
+    JWT-->>B: Usuario autenticado
+    
+    B->>P: Verificar permiso requerido
+    P->>DB: Consultar permisos del usuario
+    DB-->>P: Lista de permisos
+    P->>P: Verificar permiso específico
+    
+    alt Tiene permiso
+        P-->>B: Autorizado
+        B->>DB: Ejecutar operación
+        DB-->>B: Resultado
+        B-->>F: Respuesta exitosa
+    else No tiene permiso
+        P-->>B: No autorizado
+        B-->>F: Error 403 Forbidden
+    end
+```
+
+### Flujo de Generación de Modelos y Migraciones
+
+Diagrama que muestra el proceso de generación de modelos y migraciones desde una base de datos existente:
+
+```mermaid
+graph LR
+    A[Base de Datos Existente] --> B{Herramienta}
+    
+    B -->|Reliese Laravel| C[php artisan code:models]
+    B -->|Migrations Generator| D[php artisan migrate:generate]
+    
+    C --> E[Analizar Esquema]
+    D --> E
+    
+    E --> F[Detectar Tablas]
+    E --> G[Detectar Columnas]
+    E --> H[Detectar Relaciones]
+    E --> I[Detectar Claves Foráneas]
+    
+    F --> J[Generar Modelos Eloquent]
+    G --> J
+    H --> J
+    I --> J
+    
+    G --> K[Generar Migraciones]
+    I --> K
+    
+    J --> L[app/Models/]
+    K --> M[database/migrations/]
+    
+    L --> N[Modelos Listos para Usar]
+    M --> O[Migraciones Listas para Ejecutar]
+```
+
+### Flujo de Documentación API Automática
+
+Proceso de generación de documentación API con Scribe:
+
+```mermaid
+graph TD
+    A[php artisan scribe:generate] --> B[Escanear routes/api.php]
+    B --> C[Analizar Controladores]
+    C --> D[Detectar Middleware JWT]
+    C --> E[Extraer Validaciones]
+    C --> F[Detectar Tipos de Datos]
+    
+    D --> G[Marcar Rutas Protegidas]
+    E --> H[Extraer Parámetros]
+    F --> I[Generar Esquemas]
+    
+    G --> J[Generar Documentación HTML]
+    H --> J
+    I --> J
+    
+    J --> K[storage/app/private/scribe/]
+    K --> L[Acceso en /docs]
+    
+    L --> M{API_DOC=true?}
+    M -->|Sí| N[Documentación Disponible]
+    M -->|No| O[404 Not Found]
+```
+
+### Flujo de SEO y Generación de Sitemaps
+
+Proceso de generación automática de archivos SEO:
+
+```mermaid
+graph TD
+    A[npm run build] --> B[Ejecutar generate-seo.mjs]
+    B --> C[Leer publicRoutes.tsx]
+    C --> D[Extraer Configuración de Rutas]
+    
+    D --> E[Obtener Base URL]
+    D --> F[Obtener Metadata SEO]
+    D --> G[Obtener Prioridades]
+    
+    E --> H[Generar Sitemap XML]
+    F --> H
+    G --> H
+    
+    F --> I[Generar Robots.txt]
+    F --> J[Generar Humans.txt]
+    
+    H --> K[public/sitemap.xml]
+    I --> L[public/robots.txt]
+    J --> M[public/humans.txt]
+    
+    K --> N[Motores de Búsqueda]
+    L --> N
+    M --> O[Desarrolladores]
+```
+
+### Flujo de Caché con TTL
+
+Sistema de caché inteligente con expiración automática:
+
+```mermaid
+graph TD
+    A[Request de Datos] --> B{Existe en Caché?}
+    
+    B -->|Sí| C{TTL Válido?}
+    B -->|No| D[Fetch desde API]
+    
+    C -->|Sí| E[Retornar desde Caché]
+    C -->|No| F[Eliminar Caché Expirado]
+    F --> D
+    
+    D --> G[Guardar en Caché]
+    G --> H[Retornar Datos]
+    
+    I[Limpieza Automática] --> J[Escanear localStorage]
+    J --> K{Entrada Expirada?}
+    K -->|Sí| L[Eliminar Entrada]
+    K -->|No| M[Mantener Entrada]
+    
+    L --> N[Caché Optimizado]
+    M --> N
+```
 
 ### 📁 Estructura de Directorios
 
@@ -891,6 +1057,895 @@ class Usuario extends Authenticatable implements JWTSubject
         });
     }
 }
+```
+
+---
+
+## Backend - RedBack - Guía Completa
+
+### Instalación del Backend
+
+El backend de REDVEL utiliza Laravel 12 con PHP 8.2+. Sigue estos pasos para la instalación:
+
+```bash
+# 1. Navegar al directorio del backend
+cd RedBack
+
+# 2. Instalar dependencias de Composer
+composer install
+
+# 3. Configurar archivo de entorno
+cp .env.example .env
+
+# 4. Generar clave de aplicación
+php artisan key:generate
+
+# 5. Configurar JWT Secret
+php artisan jwt:secret
+
+# 6. Configurar base de datos en .env
+# Editar DB_DATABASE, DB_USERNAME, DB_PASSWORD
+
+# 7. Ejecutar migraciones y seeders
+php artisan migrate --seed
+```
+
+### Generación de Modelos desde Base de Datos
+
+REDVEL incluye **Reliese Laravel** para generar modelos Eloquent automáticamente desde una base de datos existente.
+
+#### Configuración
+
+La configuración se encuentra en `config/models.php`. Puedes personalizar:
+
+- **Ruta de modelos**: `app/Models` (por defecto)
+- **Namespace**: `App\Models` (por defecto)
+- **Tablas excluidas**: migrations, failed_jobs, password_resets, etc.
+- **Prefijo de tablas**: Si tus tablas tienen prefijo, puedes eliminarlo del nombre del modelo
+- **Relaciones**: Se generan automáticamente basadas en claves foráneas
+
+#### Comandos Disponibles
+
+```bash
+# Generar modelos para todas las tablas
+php artisan code:models
+
+# Generar modelos para tablas específicas
+php artisan code:models --table=usuarios
+php artisan code:models --table=personas,generos
+
+# Generar modelos excluyendo ciertas tablas
+php artisan code:models --ignore=tabla1,tabla2
+
+# Generar modelos con archivos base (para personalización)
+php artisan code:models --base-files
+```
+
+#### Características Generadas Automáticamente
+
+- **Propiedades del modelo**: Tipos de datos, nullable, etc.
+- **Relaciones Eloquent**: hasMany, belongsTo, belongsToMany
+- **Fillable attributes**: Campos que pueden ser asignados masivamente
+- **Primary keys**: Identificación automática de claves primarias
+- **Timestamps**: Detección automática de created_at/updated_at
+- **Soft deletes**: Detección de deleted_at
+
+#### Ejemplo de Modelo Generado
+
+```php
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Persona extends Model
+{
+    protected $table = 'personas';
+    protected $primaryKey = 'idpersonas';
+    
+    protected $fillable = [
+        'nombre',
+        'apellido',
+        'email',
+        'fk_idgeneros'
+    ];
+    
+    // Relación generada automáticamente
+    public function genero()
+    {
+        return $this->belongsTo(Genero::class, 'fk_idgeneros');
+    }
+}
+```
+
+### Generación de Migraciones desde Base de Datos
+
+REDVEL incluye **kitloong/laravel-migrations-generator** para generar migraciones desde una base de datos existente.
+
+#### Comandos Disponibles
+
+```bash
+# Generar migraciones para todas las tablas
+php artisan migrate:generate
+
+# Generar migraciones para tablas específicas
+php artisan migrate:generate --tables=usuarios,personas
+
+# Generar migraciones excluyendo ciertas tablas
+php artisan migrate:generate --ignore=tabla1,tabla2
+
+# Generar migraciones con conexión específica
+php artisan migrate:generate --connection=mysql
+
+# Generar migraciones sin índices
+php artisan migrate:generate --no-indexes
+
+# Generar migraciones sin claves foráneas
+php artisan migrate:generate --no-foreign-keys
+```
+
+#### Opciones Avanzadas
+
+```bash
+# Generar migraciones con prefijo de tabla
+php artisan migrate:generate --table-prefix=app_
+
+# Generar migraciones con conexión específica
+php artisan migrate:generate --connection=mysql
+
+# Generar migraciones con formato de timestamp personalizado
+php artisan migrate:generate --date-format=Y_m_d_His
+```
+
+#### Casos de Uso
+
+**Caso 1: Migrar base de datos existente a Laravel**
+
+```bash
+# 1. Conectar a la base de datos existente
+# 2. Generar todas las migraciones
+php artisan migrate:generate
+
+# 3. Revisar y ajustar las migraciones generadas
+# 4. Ejecutar migraciones en nuevo entorno
+php artisan migrate
+```
+
+**Caso 2: Sincronizar cambios de base de datos**
+
+```bash
+# 1. Hacer cambios en la base de datos directamente
+# 2. Generar migraciones solo para tablas modificadas
+php artisan migrate:generate --tables=usuarios,personas
+
+# 3. Revisar migraciones generadas
+# 4. Aplicar en otros entornos
+```
+
+### Generación de Documentación API Automática
+
+REDVEL soporta dos sistemas de documentación automática: **Scribe** (recomendado) y **L5-Swagger**.
+
+#### Scribe - Documentación Automática sin Anotaciones
+
+Scribe genera documentación completamente automática sin necesidad de anotaciones en el código.
+
+**Configuración inicial:**
+
+```bash
+# 1. Agregar en .env
+API_DOC=true
+
+# 2. Publicar configuración (solo primera vez)
+php artisan vendor:publish --provider="Knuckles\Scribe\ScribeServiceProvider" --tag=scribe-config
+
+# 3. Generar documentación
+php artisan scribe:generate
+```
+
+**Acceder a la documentación:**
+
+- URL: `http://localhost:8000/docs`
+- Solo disponible si `API_DOC=true` en `.env`
+
+**Características automáticas:**
+
+- **Detección automática de autenticación**: Detecta rutas protegidas por middleware `check.jwt`
+- **Extracción automática de parámetros**: Desde `$request->validate()` en controladores
+- **Detección de tipos de datos**: String, integer, boolean, etc.
+- **Validaciones**: Required, max, min, email, etc.
+- **Ejemplos**: Genera ejemplos automáticos basados en validaciones
+
+**Regenerar documentación:**
+
+```bash
+# Cada vez que agregues o modifiques rutas/controladores
+php artisan scribe:generate
+```
+
+#### L5-Swagger - Documentación con Anotaciones OpenAPI
+
+L5-Swagger requiere anotaciones OpenAPI pero ofrece más control sobre la documentación.
+
+**Generar documentación:**
+
+```bash
+php artisan l5-swagger:generate
+```
+
+**Acceder a la documentación:**
+
+- URL: `http://localhost:8000/api/documentation`
+- Solo disponible si `API_DOC=true` en `.env`
+
+**Ejemplo de anotación:**
+
+```php
+/**
+ * @OA\Post(
+ *     path="/api/users",
+ *     summary="Crear usuario",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             @OA\Property(property="username", type="string", example="john.doe"),
+ *             @OA\Property(property="email", type="string", format="email", example="john@example.com")
+ *         )
+ *     ),
+ *     @OA\Response(response=201, description="Usuario creado")
+ * )
+ */
+public function store(Request $request) { ... }
+```
+
+### Comandos de Permisos y Roles
+
+REDVEL utiliza Spatie Laravel Permission para gestión de permisos.
+
+#### Comandos Disponibles
+
+```bash
+# Limpiar caché de permisos (importante después de cambios)
+php artisan permission:cache-reset
+
+# Ejecutar seeder de roles y permisos
+php artisan db:seed --class=RolesAndPermissionsSeeder
+
+# Verificar permisos (comando personalizado)
+php artisan verificar:permisos
+```
+
+#### Solución de Problemas de Permisos
+
+Si encuentras errores de permisos con guard 'api':
+
+```bash
+# 1. Limpiar caché de permisos
+php artisan permission:cache-reset
+
+# 2. Ejecutar seeder actualizado
+php artisan db:seed --class=RolesAndPermissionsSeeder
+
+# 3. Limpiar caché nuevamente
+php artisan permission:cache-reset
+
+# 4. Limpiar caché general de Laravel
+php artisan config:clear
+php artisan cache:clear
+```
+
+#### Verificar Permisos en Tinker
+
+```bash
+php artisan tinker
+```
+
+```php
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+
+// Ver todos los permisos con guard 'api'
+Permission::where('guard_name', 'api')->pluck('name');
+
+// Ver roles con guard 'api'
+Role::where('guard_name', 'api')->pluck('name');
+
+// Verificar permisos de un usuario
+$user = App\Models\Usuario::find(1);
+$user->getAllPermissions()->pluck('name');
+```
+
+### Otros Comandos Útiles
+
+```bash
+# Desarrollo
+php artisan serve                    # Iniciar servidor de desarrollo
+php artisan queue:listen            # Escuchar colas
+php artisan tinker                  # REPL interactivo
+
+# Caché
+php artisan config:clear            # Limpiar caché de configuración
+php artisan cache:clear              # Limpiar caché de aplicación
+php artisan route:clear              # Limpiar caché de rutas
+php artisan view:clear               # Limpiar caché de vistas
+
+# Base de datos
+php artisan migrate                  # Ejecutar migraciones pendientes
+php artisan migrate:fresh            # Resetear base de datos y ejecutar migraciones
+php artisan migrate:refresh          # Refrescar todas las migraciones
+php artisan db:seed                  # Ejecutar seeders
+php artisan migrate:fresh --seed     # Resetear y poblar base de datos
+
+# Testing
+php artisan test                     # Ejecutar tests
+php artisan test --filter=NombreTest # Ejecutar test específico
+
+# Optimización
+php artisan optimize                 # Optimizar aplicación para producción
+php artisan config:cache             # Cachear configuración
+php artisan route:cache              # Cachear rutas
+php artisan view:cache               # Cachear vistas
+```
+
+### Instalación mediante Instalador Web
+
+REDVEL incluye un instalador web que automatiza el proceso de instalación:
+
+**Acceder al instalador:**
+
+- URL: `http://localhost:8000/install`
+
+**Proceso de instalación:**
+
+1. Verificación de conexión a base de datos
+2. Ejecución de migraciones
+3. Creación de usuarios predeterminados
+4. Asignación de roles y permisos
+5. Configuración inicial
+
+---
+
+## Frontend - RedFront - Guía Completa
+
+### Instalación del Frontend
+
+El frontend de REDVEL utiliza React 19 con TypeScript y Vite.
+
+```bash
+# 1. Navegar al directorio del frontend
+cd RedFront
+
+# 2. Instalar dependencias
+npm install
+
+# 3. Configurar variables de entorno (si es necesario)
+# Editar .env o .env.local
+
+# 4. Iniciar servidor de desarrollo
+npm run dev
+
+# 5. Construir para producción
+npm run build
+```
+
+### Sistema de Rutas
+
+REDVEL implementa un sistema de rutas modular que separa rutas públicas y protegidas.
+
+#### Estructura de Rutas
+
+```
+RedFront/src/Routes/
+├── index.ts              # Exportaciones centralizadas
+├── publicRoutes.tsx      # Rutas públicas (accesibles sin autenticación)
+├── protectedRoutes.tsx   # Rutas protegidas (requieren autenticación)
+└── errorRoutes.tsx       # Rutas de error (404, 403, etc.)
+```
+
+#### Rutas Públicas
+
+Las rutas públicas son accesibles sin autenticación y se incluyen automáticamente en el sitemap.
+
+**Configuración de ruta pública:**
+
+```typescript
+// src/Routes/publicRoutes.tsx
+export const publicRoutesConfig: PublicRoute[] = [
+  {
+    path: "/",
+    element: Redvel,
+    importancia: 1.0,  // Prioridad en sitemap (0.0 - 1.0)
+    title: "REDVEL Framework - Sistema de Gestión",
+    description: "Framework robusto para desarrollo de aplicaciones web modernas",
+    keywords: ["redvel", "framework", "sistema", "gestión"],
+    changefreq: "weekly",  // Frecuencia de actualización
+  },
+  {
+    path: "/login",
+    element: LoginPage,
+    importancia: 0.5,
+    title: "Iniciar Sesión - REDVEL",
+    description: "Inicia sesión en tu cuenta de REDVEL",
+    keywords: ["login", "iniciar sesión", "autenticación"],
+    changefreq: "monthly",
+  },
+];
+```
+
+**Propiedades de configuración:**
+
+- `path`: Ruta de la página
+- `element`: Componente React (lazy-loaded)
+- `importancia`: Prioridad en sitemap (0.0 - 1.0)
+- `title`: Título SEO de la página
+- `description`: Descripción SEO
+- `keywords`: Array de palabras clave
+- `changefreq`: Frecuencia de actualización (always, hourly, daily, weekly, monthly, yearly, never)
+
+#### Rutas Protegidas
+
+Las rutas protegidas requieren autenticación y pueden requerir permisos específicos.
+
+**Configuración de ruta protegida:**
+
+```typescript
+// src/Routes/protectedRoutes.tsx
+export function getProtectedRoutes() {
+  return [
+    <Route
+      key="/usuarios/lista"
+      path="/usuarios/lista"
+      element={
+        <ProtectedRoute requiredPermissions={["usuarios.view"]}>
+          <PageUsuarios />
+        </ProtectedRoute>
+      }
+    />,
+    <Route
+      key="dashboard-layout"
+      element={
+        <ProtectedRoute>
+          <DashboardLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/inicio" element={<Inicio />} />
+    </Route>,
+  ];
+}
+```
+
+**Opciones de ProtectedRoute:**
+
+- `requiredPermissions`: Array de permisos requeridos
+- `requiredRoles`: Array de roles requeridos
+- `requireAll`: Si true, requiere todos los permisos/roles (por defecto: false)
+- `fallbackPath`: Ruta de redirección si no tiene permisos (por defecto: "/403")
+
+#### Uso en la Aplicación
+
+```typescript
+// src/App.tsx
+import { getPublicRoutes } from "./Routes/publicRoutes";
+import { getProtectedRoutes } from "./Routes/protectedRoutes";
+import { getErrorRoutes } from "./Routes/errorRoutes";
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {getPublicRoutes()}
+        {getProtectedRoutes()}
+        {getErrorRoutes()}
+      </Routes>
+    </Router>
+  );
+}
+```
+
+### Componentes SEO
+
+REDVEL incluye componentes especializados para gestión de SEO.
+
+#### SeoWrapper
+
+Componente wrapper que aplica metadata SEO básica a páginas.
+
+**Uso básico:**
+
+```typescript
+import { SeoWrapper } from "@/assets/lib/SeoWrapper";
+
+function MiPagina() {
+  return (
+    <SeoWrapper
+      title="Título de la Página"
+      description="Descripción de la página para SEO"
+      keywords={["palabra1", "palabra2", "palabra3"]}
+      contentType="website"
+    >
+      <ContenidoDeLaPagina />
+    </SeoWrapper>
+  );
+}
+```
+
+**Propiedades:**
+
+- `title`: Título de la página (actualiza `<title>` y `og:title`)
+- `description`: Descripción (actualiza `meta description` y `og:description`)
+- `keywords`: Array de palabras clave
+- `contentType`: Tipo de contenido Open Graph (default: "website")
+
+**Características:**
+
+- Actualiza automáticamente el título del documento
+- Crea/actualiza meta tags de descripción
+- Gestiona keywords para SEO
+- Configura Open Graph básico
+
+#### SeoHead
+
+Componente avanzado para gestión completa de SEO y metadata.
+
+**Uso completo:**
+
+```typescript
+import { SeoHead } from "@/assets/lib/SeoHead";
+
+function ArticuloPage() {
+  return (
+    <>
+      <SeoHead
+        title="Título del Artículo"
+        description="Descripción completa del artículo"
+        keywords={["artículo", "tutorial", "guía"]}
+        canonical="https://example.com/articulo"
+        lang="es"
+        author="Autor del Artículo"
+        robots="index, follow"
+        image="https://example.com/imagen.jpg"
+        type="article"
+        url="https://example.com/articulo"
+        siteName="REDVEL Framework"
+        twitterCard="summary_large_image"
+        twitterSite="@redvel"
+        twitterCreator="@autor"
+        themeColor="#FF2D20"
+        publishedTime="2024-01-01T00:00:00Z"
+        modifiedTime="2024-01-15T00:00:00Z"
+        section="Tutoriales"
+        tags={["laravel", "react", "tutorial"]}
+        customMeta={[
+          { name: "custom-meta", content: "valor personalizado" }
+        ]}
+        customLinks={[
+          { rel: "alternate", href: "https://example.com/en/article", hreflang: "en" }
+        ]}
+      />
+      <ContenidoDelArticulo />
+    </>
+  );
+}
+```
+
+**Propiedades principales:**
+
+- **Básicas**: title, description, keywords, canonical, lang, author, robots
+- **Open Graph**: image, type, url, siteName, publishedTime, modifiedTime, section, tags
+- **Twitter Cards**: twitterCard, twitterSite, twitterCreator
+- **Tema**: themeColor, tileColor
+- **Personalización**: customMeta, customLinks
+
+**Características:**
+
+- Gestión completa de meta tags
+- Soporte para Open Graph
+- Soporte para Twitter Cards
+- Meta tags personalizados
+- Links personalizados (canonical, alternate, etc.)
+- Actualización automática del `<head>`
+
+#### Sistema de Caché
+
+REDVEL incluye un sistema de caché con TTL (Time To Live) para optimizar el rendimiento.
+
+**Uso básico:**
+
+```typescript
+import { getCache, setCache, removeCache } from "@/assets/lib/cache";
+
+// Guardar en caché con TTL de 15 minutos
+setCache("user_data", userData, 15 * 60 * 1000);
+
+// Obtener del caché
+const cachedData = getCache("user_data", 15 * 60 * 1000);
+
+// Eliminar del caché
+removeCache("user_data");
+```
+
+**Funciones disponibles:**
+
+```typescript
+// Guardar valor con TTL opcional
+setCache<T>(key: string, value: T, ttl?: number): boolean
+
+// Obtener valor (retorna null si expiró o no existe)
+getCache<T>(key: string, ttl?: number): T | null
+
+// Verificar si existe y no ha expirado
+hasCache(key: string, ttl?: number): boolean
+
+// Eliminar clave específica
+removeCache(key: string): boolean
+
+// Limpiar caché expirado
+clearExpiredCache(): number
+
+// Limpiar todo el caché (solo entradas con formato de caché)
+clearAllCache(prefix?: string): number
+
+// Obtener tamaño aproximado del caché en bytes
+getCacheSize(): number
+```
+
+**Ejemplo de uso en componente:**
+
+```typescript
+import { useEffect, useState } from "react";
+import { getCache, setCache } from "@/assets/lib/cache";
+
+function UserProfile({ userId }: { userId: string }) {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const cacheKey = `user_${userId}`;
+    const ttl = 15 * 60 * 1000; // 15 minutos
+
+    // Intentar obtener del caché
+    const cached = getCache(cacheKey, ttl);
+    if (cached) {
+      setUserData(cached);
+      setLoading(false);
+      return;
+    }
+
+    // Si no hay caché, hacer request
+    fetch(`/api/users/${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        setUserData(data);
+        setCache(cacheKey, data, ttl);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  if (loading) return <div>Cargando...</div>;
+  return <div>{/* Renderizar datos */}</div>;
+}
+```
+
+**Características del caché:**
+
+- TTL configurable por entrada
+- Persistencia en localStorage
+- Limpieza automática de entradas expiradas
+- Manejo de errores (localStorage lleno, modo privado, etc.)
+- Validación de tipos TypeScript
+- Prefijos opcionales para organización
+
+### Generación Automática de Sitemaps
+
+REDVEL genera automáticamente sitemaps basados en las rutas públicas configuradas.
+
+#### Configuración
+
+El script de generación se ejecuta automáticamente durante el build:
+
+```bash
+npm run build
+```
+
+También se puede ejecutar manualmente:
+
+```bash
+node scripts/generate-seo.mjs
+```
+
+#### Archivos Generados
+
+El script genera tres archivos en `public/`:
+
+1. **sitemap.xml**: Sitemap XML estándar con todas las rutas públicas
+2. **robots.txt**: Archivo robots.txt con configuración de crawlers
+3. **humans.txt**: Archivo humans.txt con información del sitio
+
+#### Configuración de Base URL
+
+La base URL se obtiene de `src/assets/constants/constantes.ts`:
+
+```typescript
+export const baseUrl: string = "http://localhost:3000";
+```
+
+#### Estructura del Sitemap
+
+El sitemap incluye automáticamente:
+
+- **URL**: URL completa de cada ruta pública
+- **Lastmod**: Fecha de última modificación (actual)
+- **Changefreq**: Frecuencia de actualización configurada en la ruta
+- **Priority**: Prioridad basada en `importancia` (0.0 - 1.0)
+
+#### Ejemplo de Sitemap Generado
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>http://localhost:3000/</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>http://localhost:3000/login</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
+```
+
+#### Robots.txt Generado
+
+El robots.txt incluye:
+
+- Permisos para motores de búsqueda principales
+- Bloqueo de directorios administrativos
+- Bloqueo de rutas protegidas
+- Referencia al sitemap
+- Crawl-delay configurado
+
+#### Personalización
+
+Para personalizar la generación, edita `scripts/generate-seo.mjs`:
+
+- Modificar reglas de robots.txt
+- Agregar rutas adicionales al sitemap
+- Cambiar formato de fechas
+- Agregar namespaces XML adicionales
+
+### Mejoras de SEO Implementadas
+
+REDVEL incluye múltiples mejoras de SEO:
+
+#### Meta Tags Completos
+
+- Título optimizado para cada página
+- Descripción única y relevante
+- Keywords estratégicas
+- Canonical URLs
+- Open Graph tags completos
+- Twitter Cards
+
+#### Estructura Semántica
+
+- Uso correcto de headings (H1, H2, H3)
+- Meta tags de idioma
+- Schema.org markup (preparado)
+- URLs amigables
+
+#### Performance SEO
+
+- Lazy loading de componentes
+- Caché inteligente con TTL
+- Optimización de imágenes (preparado)
+- Minificación de assets en producción
+
+#### Accesibilidad
+
+- Atributos alt en imágenes
+- Navegación por teclado
+- Contraste de colores adecuado
+- Etiquetas ARIA (preparado)
+
+### Casos de Uso
+
+#### Caso 1: Página Pública con SEO Completo
+
+```typescript
+import { SeoHead } from "@/assets/lib/SeoHead";
+import { SeoWrapper } from "@/assets/lib/SeoWrapper";
+
+function BlogPost({ post }) {
+  return (
+    <>
+      <SeoHead
+        title={post.title}
+        description={post.excerpt}
+        keywords={post.tags}
+        canonical={`https://example.com/blog/${post.slug}`}
+        type="article"
+        image={post.featuredImage}
+        publishedTime={post.publishedAt}
+        modifiedTime={post.updatedAt}
+        author={post.author.name}
+      />
+      <article>
+        <h1>{post.title}</h1>
+        <div dangerouslySetInnerHTML={{ __html: post.content }} />
+      </article>
+    </>
+  );
+}
+```
+
+#### Caso 2: Lista con Caché
+
+```typescript
+import { useEffect, useState } from "react";
+import { getCache, setCache } from "@/assets/lib/cache";
+
+function ProductList() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const cacheKey = "products_list";
+    const ttl = 10 * 60 * 1000; // 10 minutos
+
+    const cached = getCache(cacheKey, ttl);
+    if (cached) {
+      setProducts(cached);
+      setLoading(false);
+      return;
+    }
+
+    fetch("/api/products")
+      .then(res => res.json())
+      .then(data => {
+        setProducts(data);
+        setCache(cacheKey, data, ttl);
+        setLoading(false);
+      });
+  }, []);
+
+  return (
+    <SeoWrapper
+      title="Catálogo de Productos"
+      description="Explora nuestro catálogo completo de productos"
+      keywords={["productos", "catálogo", "tienda"]}
+    >
+      <div>
+        {products.map(product => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </SeoWrapper>
+  );
+}
+```
+
+#### Caso 3: Ruta Protegida con Permisos
+
+```typescript
+// En protectedRoutes.tsx
+<Route
+  path="/admin/usuarios"
+  element={
+    <ProtectedRoute
+      requiredPermissions={["usuarios.view", "usuarios.edit"]}
+      requireAll={false}
+      fallbackPath="/dashboard"
+    >
+      <UserManagementPage />
+    </ProtectedRoute>
+  }
+/>
 ```
 
 ---

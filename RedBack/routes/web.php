@@ -14,4 +14,6 @@ Route::get('/500', function () {
 if (!Schema::hasTable('instalacion') || !DB::table('instalacion')->where('estado_instalacion', true)->exists()) {
     Route::get('/install', [InstallController::class, 'index'])->name('install');
     Route::post('/install', [InstallController::class, 'install'])->name('install.run');
+    Route::get('/install/status', [InstallController::class, 'checkStatus'])->name('install.status');
+    Route::post('/install/rollback', [InstallController::class, 'rollback'])->name('install.rollback');
 }

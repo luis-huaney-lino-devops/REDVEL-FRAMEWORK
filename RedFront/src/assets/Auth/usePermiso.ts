@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { hasPermission } from "./authUtils";
+import { usePermissions } from "./usePermissions";
 import toast from "react-hot-toast";
 
 interface UsePermisoOptions {
@@ -23,12 +23,17 @@ export const usePermiso = (
     mostrarError = true,
   } = options;
 
+  const { hasPermission, isLoading } = usePermissions();
+
   const tienePermiso = useMemo(() => {
+    if (isLoading) {
+      return false; // No permitir acciones mientras se cargan permisos
+    }
     if (Array.isArray(permisos)) {
       return permisos.some((permiso) => hasPermission(permiso));
     }
     return hasPermission(permisos);
-  }, [permisos]);
+  }, [permisos, hasPermission, isLoading]);
 
   const ejecutarConPermiso = useCallback(
     <TArgs extends unknown[], TResult>(
@@ -64,6 +69,7 @@ export const usePermiso = (
 
   return {
     tienePermiso,
+    isLoading,
     ejecutarConPermiso,
     ejecutarAsyncConPermiso,
   };

@@ -1,0 +1,20 @@
+# Habilitar reescritura de URLs (necesario para React Router)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Si el archivo o directorio solicitado existe, se sirve normalmente
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Si no existe, redirige todo a index.html
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>
+
+# Opcional: Configurar cabeceras para cache y compresión
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json)$">
+    Header set Cache-Control "max-age=31536000, public"
+  </FilesMatch>
+</IfModule>

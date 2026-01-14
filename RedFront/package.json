@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && node scripts/generate-seo.mjs && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-seo": "node scripts/generate-seo.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

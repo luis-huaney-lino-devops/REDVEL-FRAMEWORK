@@ -14,9 +14,17 @@ return new class extends Migration
         Schema::create('usuarios', function (Blueprint $table) {
             $table->integer('idusuarios', true);
             $table->text('codigo_usuario');
-            $table->boolean('estado');
-            $table->string('nomusu', 45);
+            $table->timestamp('email_verificado')->nullable();
+            $table->tinyInteger('estado');
+            $table->string('nomusu');
             $table->text('password');
+            $table->enum('tipo_autenticacion', ['local', 'google', 'facebook']);
+            $table->string('provider_id')->nullable();
+            $table->string('provider_token')->nullable();
+            $table->timestamp('fecha_creacion')->nullable();
+            $table->dateTime('fecha_ultimo_acceso');
+            $table->timestamps();
+            $table->softDeletes();
             $table->integer('fk_idpersonas')->index('fk_personas2');
         });
     }

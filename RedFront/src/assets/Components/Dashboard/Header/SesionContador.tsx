@@ -9,6 +9,11 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Constantes from "@/assets/constants/constantes";
+import {
+  getTokenInfo,
+  clearSessionCookies,
+  showSessionExpiredMessage,
+} from "@/assets/Auth/authUtils";
 import type { DecodedToken } from "@/assets/Auth/TipesAuth";
 
 // Formatear segundos para mostrar siempre horas, minutos y segundos
@@ -38,45 +43,49 @@ export default function HeaderTokenTimer() {
 
   const navigate = useNavigate();
 
-  // Función para obtener y decodificar el token
-  const getTokenInfo = () => {
-    try {
-      const token = Cookies.get("token");
+  // Función para obtener información del token usando authUtils
+  const getTokenData = () => {
+    const tokenInfo = getTokenInfo();
 
-      if (!token) {
-        setTokenExists(false);
-        return null;
-      }
-
-      const decodedToken = jwtDecode<DecodedToken>(token);
-      return decodedToken;
-    } catch (error) {
-      console.error("Error al decodificar el token:", error);
+    if (!tokenInfo.isValid) {
       setTokenExists(false);
       return null;
     }
+
+    if (tokenInfo.isExpired) {
+      setTokenExists(false);
+      return null;
+    }
+
+    return tokenInfo;
   };
 
   // Función para calcular el tiempo restante
   const calculateRemainingTime = () => {
-    const tokenInfo = getTokenInfo();
+    const tokenInfo = getTokenData();
 
-    if (!tokenInfo) {
+    if (!tokenInfo || !tokenInfo.exp) {
       setTokenExists(false);
       return;
     }
 
-    const expirationTime = tokenInfo.exp * 1000; // Convertir a milisegundos
-    const currentTime = Date.now();
-    const timeRemaining = Math.max(
-      0,
-      Math.floor((expirationTime - currentTime) / 1000)
-    );
+    const timeRemaining = tokenInfo.timeRemaining || 0;
 
     // Si es la primera vez que calculamos, establecer la duración total
-    if (totalDuration === 0) {
-      const estimatedTotalDuration = 3600; // 1 hora por defecto
-      setTotalDuration(estimatedTotalDuration);
+    if (totalDuration === 0 && tokenInfo.exp) {
+      // Calcular duración total basada en exp - iat del token
+      try {
+        const token = Cookies.get("token");
+        if (token) {
+          const decodedToken = jwtDecode<DecodedToken>(token);
+          const estimatedTotalDuration = decodedToken.exp - decodedToken.iat;
+          setTotalDuration(estimatedTotalDuration);
+        } else {
+          setTotalDuration(3600); // 1 hora por defecto
+        }
+      } catch {
+        setTotalDuration(3600); // 1 hora por defecto
+      }
     }
 
     // Mostrar botón de renovar cuando queden menos de 30 minutos
@@ -93,16 +102,9 @@ export default function HeaderTokenTimer() {
 
   // Función para manejar el cierre de sesión
   const handleLogout = () => {
-    // Limpiar todas las cookies
-
-    Cookies.remove("token");
-    Cookies.remove("nombre_usuario");
-    Cookies.remove("foto_perfil");
-    Cookies.remove("codigo_usuario");
-    Cookies.remove("rol");
-    Cookies.remove("email");
     setTokenExists(false);
-    toast.error("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.");
+    clearSessionCookies();
+    showSessionExpiredMessage();
     navigate("/login");
   };
 
@@ -115,13 +117,21 @@ export default function HeaderTokenTimer() {
     }, 1000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRenewSession = async () => {
     try {
       setIsLoading(true);
+      const tokenInfo = getTokenData();
+
+      if (!tokenInfo || !tokenInfo.user) {
+        handleLogout();
+        return;
+      }
+
       const token = Cookies.get("token");
-      const codigo_usuario = Cookies.get("codigo_usuario");
+      const codigo_usuario = tokenInfo.user.codigo_usuario;
 
       if (!token || !codigo_usuario) {
         handleLogout();
@@ -169,7 +179,6 @@ export default function HeaderTokenTimer() {
           decodedToken.codigo_usuario,
           cookieOptions
         );
-        Cookies.set("rol", JSON.stringify(decodedToken.roles), cookieOptions);
 
         // Recalcular el tiempo restante
         calculateRemainingTime();

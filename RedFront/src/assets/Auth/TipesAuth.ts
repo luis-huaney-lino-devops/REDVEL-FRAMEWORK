@@ -37,8 +37,6 @@ export interface DecodedToken {
   jti: string;
   sub: string;
   prv: string;
-  roles: string[];
-  permissions: string[];
   id_user: number;
   nombre_de_usuario: string;
   foto_perfil: string | null;
@@ -48,8 +46,6 @@ export interface DecodedToken {
 export interface TokenInfo {
   isValid: boolean;
   isExpired: boolean;
-  permissions: string[];
-  roles: string[];
   user?: {
     id: number;
     nombre_de_usuario: string;
@@ -58,4 +54,19 @@ export interface TokenInfo {
   };
   exp?: number;
   timeRemaining?: number;
+}
+
+export interface PermissionsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    roles: string[];
+    permissions: string[];
+  };
+}
+
+export interface PermissionsCache {
+  roles: string[];
+  permissions: string[];
+  expiresAt: number; // Timestamp en milisegundos
 }

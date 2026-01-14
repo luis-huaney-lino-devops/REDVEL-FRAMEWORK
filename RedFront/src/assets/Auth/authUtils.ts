@@ -11,6 +11,7 @@ import {
   type DecodedToken,
   type TokenInfo,
 } from "./TipesAuth";
+import * as permissionsService from "./permissionsService";
 import React from "react";
 
 // Constantes para la verificación del token
@@ -31,7 +32,7 @@ export const getTokenInfo = (): TokenInfo => {
   try {
     const token = Cookies.get("token");
     if (!token) {
-      return { isValid: false, isExpired: false, permissions: [], roles: [] };
+      return { isValid: false, isExpired: false };
     }
 
     // Decodificar el token
@@ -47,8 +48,6 @@ export const getTokenInfo = (): TokenInfo => {
     return {
       isValid: true,
       isExpired,
-      permissions: !isExpired ? decodedToken.permissions : [],
-      roles: !isExpired ? decodedToken.roles : [],
       user: !isExpired
         ? {
             id: decodedToken.id_user,
@@ -62,24 +61,24 @@ export const getTokenInfo = (): TokenInfo => {
     };
   } catch (error) {
     console.error("Error al decodificar el token:", error);
-    return { isValid: false, isExpired: false, permissions: [], roles: [] };
+    return { isValid: false, isExpired: false };
   }
 };
 
 /**
- * Función para obtener permisos del token
+ * Función para obtener permisos (desde caché local)
+ * @deprecated Usar getPermissions() desde permissionsService para obtener desde servidor
  */
 export const getPermissionsFromToken = (): string[] => {
-  const { permissions } = getTokenInfo();
-  return permissions;
+  return permissionsService.getAllPermissions();
 };
 
 /**
- * Función para obtener roles del token
+ * Función para obtener roles (desde caché local)
+ * @deprecated Usar getPermissions() desde permissionsService para obtener desde servidor
  */
 export const getRolesFromToken = (): string[] => {
-  const { roles } = getTokenInfo();
-  return roles;
+  return permissionsService.getAllRoles();
 };
 
 /**
@@ -110,22 +109,24 @@ export const clearSessionCookies = (): void => {
       Cookies.remove(cookieName);
     }
   }
+  // También limpiar caché de permisos
+  permissionsService.clearPermissionsCache();
 };
 
 /**
  * Función para verificar si el usuario tiene un permiso específico
+ * Re-exportada desde permissionsService para mantener compatibilidad
  */
 export const hasPermission = (permission: string): boolean => {
-  const { permissions } = getTokenInfo();
-  return permissions.includes(permission);
+  return permissionsService.hasPermission(permission);
 };
 
 /**
  * Función para verificar si el usuario tiene un rol específico
+ * Re-exportada desde permissionsService para mantener compatibilidad
  */
 export const hasRole = (role: string): boolean => {
-  const { roles } = getTokenInfo();
-  return roles.includes(role);
+  return permissionsService.hasRole(role);
 };
 
 /**
@@ -233,7 +234,14 @@ export const login = async (credentials: UserCredentials): Promise<boolean> => {
     );
     Cookies.set("foto_perfil", decodedToken.foto_perfil || "", cookieOptions);
     Cookies.set("codigo_usuario", decodedToken.codigo_usuario, cookieOptions);
-    Cookies.set("rol", JSON.stringify(decodedToken.roles), cookieOptions);
+
+    // Obtener y guardar permisos en caché
+    try {
+      await permissionsService.getPermissions(true); // Force refresh después del login
+    } catch (error) {
+      console.warn("No se pudieron obtener permisos después del login:", error);
+      // No fallar el login si no se pueden obtener permisos
+    }
 
     toast.success(`¡Bienvenido, ${decodedToken.nombre_de_usuario}!`);
     return true;
@@ -264,6 +272,99 @@ export const logout = (): void => {
 export const checkSession = (): boolean => {
   const { isValid, isExpired } = getTokenInfo();
   return isValid && !isExpired;
+};
+
+/**
+ * Valida que una ruta sea segura y válida
+ * Previene inyección de código, directory traversal, y rutas externas
+ * @param path La ruta a validar
+ * @returns true si la ruta es segura, false en caso contrario
+ */
+export const validateRedirectPath = (path: string): boolean => {
+  // Verificar que la ruta no esté vacía
+  if (!path || typeof path !== "string") {
+    return false;
+  }
+
+  // Limitar la longitud de la ruta (máximo 500 caracteres)
+  if (path.length > 500) {
+    return false;
+  }
+
+  // La ruta debe comenzar con "/" (ruta relativa al root)
+  if (!path.startsWith("/")) {
+    return false;
+  }
+
+  // No permitir protocolos (http://, https://, javascript:, etc.)
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(path)) {
+    return false;
+  }
+
+  // No permitir directory traversal (../, ..\, etc.)
+  if (path.includes("..") || path.includes("\\")) {
+    return false;
+  }
+
+  // Solo permitir caracteres válidos: letras, números, guiones, barras, puntos, guiones bajos
+  // y algunos caracteres especiales seguros para URLs
+  const validPathPattern = /^\/[a-zA-Z0-9/._\-~!*'();:@&=+$,?#[\]]*$/;
+  if (!validPathPattern.test(path)) {
+    return false;
+  }
+
+  // No permitir caracteres peligrosos para prevenir XSS
+  const dangerousChars = /[<>'"`]/;
+  if (dangerousChars.test(path)) {
+    return false;
+  }
+
+  // No permitir múltiples barras consecutivas (como /usuarios//lista)
+  if (path.includes("//")) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Codifica una ruta de forma segura para usar como parámetro de URL
+ * @param path La ruta a codificar
+ * @returns La ruta codificada de forma segura, o null si no es válida
+ */
+export const encodeRedirectPath = (path: string): string | null => {
+  if (!validateRedirectPath(path)) {
+    return null;
+  }
+  // Usar encodeURIComponent para codificar caracteres especiales
+  return encodeURIComponent(path);
+};
+
+/**
+ * Decodifica una ruta de un parámetro de URL y valida que sea segura
+ * @param encodedPath La ruta codificada
+ * @returns La ruta decodificada y validada, o null si no es válida
+ */
+export const decodeRedirectPath = (encodedPath: string): string | null => {
+  if (!encodedPath || typeof encodedPath !== "string") {
+    return null;
+  }
+
+  try {
+    // Decodificar la ruta
+    const decodedPath = decodeURIComponent(encodedPath);
+
+    // Validar que la ruta decodificada sea segura
+    if (!validateRedirectPath(decodedPath)) {
+      return null;
+    }
+
+    return decodedPath;
+  } catch (error) {
+    // Si hay error al decodificar (caracteres inválidos), retornar null
+    console.warn("Error al decodificar ruta de redirección:", error);
+    return null;
+  }
 };
 
 /**
@@ -381,6 +482,17 @@ export const useSessionCheck = (interval = TOKEN_CHECK_INTERVAL): void => {
           showInvalidSessionMessage();
           navigate("/login");
           return;
+        }
+
+        // Sincronizar permisos si es necesario
+        const cached = permissionsService.getCachedPermissionsSync();
+        if (cached.permissions.length === 0 && cached.roles.length === 0) {
+          // Si no hay permisos en caché, intentar obtenerlos
+          try {
+            await permissionsService.getPermissions();
+          } catch (error) {
+            console.warn("No se pudieron obtener permisos:", error);
+          }
         }
 
         // Mostrar advertencia si la sesión está por expirar

@@ -228,8 +228,8 @@
             </p>
         </div>
 
-        <!-- Botón de Instalación -->
-        <div class="text-center mb-8">
+        <!-- Botones de Instalación y Rollback -->
+        <div class="text-center mb-8 flex gap-4 justify-center">
             <button id="startInstallBtn"
                 class="btn-primary text-white px-12 py-4 rounded-lg font-bold text-xl shadow-lg hover:shadow-2xl disabled:cursor-not-allowed">
                 <div class="flex items-center gap-3">
@@ -240,6 +240,40 @@
                     <span id="btnText">COMENZAR INSTALACIÓN</span>
                 </div>
             </button>
+            <button id="rollbackBtn"
+                class="bg-red-800 hover:bg-red-900 text-white px-8 py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hidden">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                    <span id="rollbackBtnText">RESTAURAR INSTALACIÓN</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- Panel de Errores Detallados -->
+        <div id="errorPanel"
+            class="bg-red-900 bg-opacity-20 backdrop-blur-sm rounded-lg p-4 border border-red-500 mb-4 hidden">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-red-400 font-semibold text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Error de Instalación
+                </h3>
+                <button id="closeErrorPanel" class="text-red-400 hover:text-red-300">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div id="errorContent" class="space-y-2 text-xs">
+                <!-- El contenido del error se insertará aquí -->
+            </div>
         </div>
 
         <!-- Terminal -->
@@ -297,6 +331,213 @@
         // Obtiene el token CSRF desde la metaetiqueta
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+        // Función para mostrar errores detallados (UI compacta)
+        function showDetailedError(errorData) {
+            const errorPanel = document.getElementById('errorPanel');
+            const errorContent = document.getElementById('errorContent');
+
+            // Extraer solo el nombre del archivo
+            const fileName = errorData.file ? errorData.file.split(/[/\\]/).pop() : 'N/A';
+            const filePath = errorData.file || 'N/A';
+
+            let html = `
+                <div class="bg-red-950 bg-opacity-50 p-2 rounded border border-red-700">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <span class="text-red-300 font-medium text-xs">Tipo:</span>
+                            <span class="text-white font-mono text-xs ml-1">${errorData.category || 'Desconocido'}</span>
+                        </div>
+                        <div>
+                            <span class="text-red-300 font-medium text-xs">Línea:</span>
+                            <span class="text-white font-mono text-xs ml-1">${errorData.line || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-red-300 font-medium text-xs">Archivo:</span>
+                        <span class="text-white font-mono text-xs ml-1 break-all" title="${filePath}">${fileName}</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-red-300 font-medium text-xs">Mensaje:</span>
+                        <div class="bg-black bg-opacity-50 p-2 rounded text-red-200 font-mono text-xs whitespace-pre-wrap break-words mt-1">${errorData.message || 'Sin mensaje'}</div>
+                    </div>
+                    ${errorData.context ? `
+                                    <details class="cursor-pointer mt-2">
+                                        <summary class="text-red-300 font-medium text-xs hover:text-red-200">Código (líneas ${Math.max(1, (errorData.line || 0) - 5)}-${(errorData.line || 0) + 5})</summary>
+                                        <div class="bg-black bg-opacity-50 p-2 rounded text-gray-300 font-mono text-xs overflow-x-auto mt-1">
+                                            <pre class="whitespace-pre-wrap">${errorData.context}</pre>
+                                        </div>
+                                    </details>
+                                ` : ''}
+                    ${errorData.trace ? `
+                                    <details class="cursor-pointer mt-2">
+                                        <summary class="text-red-300 font-medium text-xs hover:text-red-200">Stack Trace</summary>
+                                        <div class="bg-black bg-opacity-50 p-2 rounded text-gray-400 font-mono text-xs overflow-x-auto mt-1 max-h-40 overflow-y-auto">
+                                            <pre class="whitespace-pre-wrap break-words">${errorData.trace}</pre>
+                                        </div>
+                                    </details>
+                                ` : ''}
+                </div>
+            `;
+
+            errorContent.innerHTML = html;
+            errorPanel.classList.remove('hidden');
+        }
+
+        // Función para verificar el estado de la instalación
+        function checkInstallationStatus() {
+            console.log('🔍 Verificando estado de la instalación...');
+            const rollbackBtn = document.getElementById('rollbackBtn');
+
+            fetch('/install/status', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('📡 Respuesta recibida:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('✅ Datos recibidos:', data);
+
+                    if (data.success && data.can_rollback) {
+                        // Mostrar el botón de rollback si hay tablas creadas
+                        console.log(`✅ Puede hacer rollback. Tablas encontradas: ${data.tables_count}`);
+                        rollbackBtn.classList.remove('hidden');
+                    } else {
+                        // Ocultar el botón si no hay tablas o no se puede hacer rollback
+                        console.log(`❌ No se puede hacer rollback. Razón: ${data.message || 'Sin tablas creadas'}`);
+                        rollbackBtn.classList.add('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error al verificar estado:', error);
+                    // En caso de error, ocultar el botón
+                    rollbackBtn.classList.add('hidden');
+                });
+        }
+
+        // Función para añadir líneas al terminal (disponible globalmente)
+        function addTerminalLine(text, className = 'text-green-400') {
+            const terminal = document.getElementById('installTerminal');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${className} mb-1`;
+            line.innerHTML = `
+          <span class="text-red-400">redvel@installer</span>
+          <span class="text-white">:</span>
+          <span class="text-blue-400">~</span>
+          <span class="text-white">$ </span>
+          <span>${text}</span>
+        `;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Función para actualizar el estado (disponible globalmente)
+        function updateStatus(elementId, text, className) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+                element.className = className;
+            }
+        }
+
+        // Verificar el estado cuando el DOM esté completamente cargado
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkInstallationStatus);
+        } else {
+            // DOM ya está cargado
+            checkInstallationStatus();
+        }
+
+        // Cerrar panel de errores
+        const closeErrorPanel = document.getElementById('closeErrorPanel');
+        if (closeErrorPanel) {
+            closeErrorPanel.addEventListener('click', function() {
+                document.getElementById('errorPanel').classList.add('hidden');
+            });
+        }
+
+        // Función de rollback - asegurar que el botón existe antes de agregar el listener
+        const rollbackBtnElement = document.getElementById('rollbackBtn');
+        if (rollbackBtnElement) {
+            rollbackBtnElement.addEventListener('click', function() {
+                const rollbackBtn = document.getElementById('rollbackBtn');
+                const rollbackBtnText = document.getElementById('rollbackBtnText');
+                const terminal = document.getElementById('installTerminal');
+
+                if (!confirm(
+                        '⚠️ ADVERTENCIA: Esta acción eliminará TODAS las tablas de la base de datos y restaurará el sistema a su estado inicial. ¿Está seguro de continuar?'
+                    )) {
+                    return;
+                }
+
+                rollbackBtn.disabled = true;
+                rollbackBtnText.textContent = 'RESTAURANDO...';
+
+                addTerminalLine('🔄 Iniciando rollback de la instalación...', 'text-yellow-400');
+                addTerminalLine('⚠️ Eliminando todas las tablas de la base de datos...', 'text-yellow-400');
+
+                fetch('/install/rollback', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            addTerminalLine(`✅ Rollback completado exitosamente`, 'text-green-400');
+                            addTerminalLine(`📊 Tablas eliminadas: ${data.count}`, 'text-green-400');
+                            if (data.dropped_tables && data.dropped_tables.length > 0) {
+                                addTerminalLine(`🗑️ Tablas: ${data.dropped_tables.join(', ')}`,
+                                    'text-gray-400');
+                            }
+                            addTerminalLine('🔄 El sistema está listo para una nueva instalación limpia',
+                                'text-blue-400');
+
+                            // Habilitar botón de instalación
+                            document.getElementById('startInstallBtn').disabled = false;
+                            document.getElementById('btnText').textContent = 'COMENZAR INSTALACIÓN';
+
+                            // Verificar estado nuevamente para ocultar el botón de rollback
+                            setTimeout(() => {
+                                checkInstallationStatus();
+                            }, 500);
+
+                            rollbackBtnText.textContent = 'RESTAURAR INSTALACIÓN';
+                            rollbackBtn.disabled = false;
+                        } else {
+                            addTerminalLine(
+                                `❌ Error durante el rollback: ${data.message || 'Error desconocido'}`,
+                                'text-red-400');
+                            if (data.error) {
+                                showDetailedError(data.error);
+                            }
+                            rollbackBtnText.textContent = 'REINTENTAR ROLLBACK';
+                            rollbackBtn.disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error en rollback:', error);
+                        addTerminalLine(`❌ Error de conexión: ${error.message}`, 'text-red-400');
+                        rollbackBtnText.textContent = 'REINTENTAR ROLLBACK';
+                        rollbackBtn.disabled = false;
+                    });
+            });
+        }
+
         document.getElementById('startInstallBtn').addEventListener('click', function() {
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
@@ -324,21 +565,89 @@
                     }
                 })
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error en la conexión con el servidor');
-                    }
-                    return response.json();
+                    return response.json().then(data => {
+                        if (!response.ok) {
+                            throw {
+                                response: data,
+                                status: response.status
+                            };
+                        }
+                        return data;
+                    });
                 })
                 .then(data => {
-                    addTerminalLine(
-                        `✅ Servidor respondió: ${data.message || 'Instalación iniciada correctamente'}`,
-                        'text-green-400');
-                    // Si el servidor responde correctamente, completamos la instalación
-                    completeInstallation();
+                    if (data.success) {
+                        // Mostrar información de los pasos si está disponible
+                        if (data.steps && Array.isArray(data.steps)) {
+                            data.steps.forEach(step => {
+                                if (step.status === 'success') {
+                                    addTerminalLine(
+                                        `✅ Paso ${step.step}: ${step.name} - ${step.message || 'Completado'}`,
+                                        'text-green-400');
+                                } else if (step.status === 'error') {
+                                    addTerminalLine(
+                                        `❌ Paso ${step.step}: ${step.name} - ${step.message || 'Error'}`,
+                                        'text-red-400');
+                                }
+                            });
+                        }
+
+                        addTerminalLine(
+                            `✅ ${data.message || 'Instalación completada correctamente'}`,
+                            'text-green-400');
+                        // Si el servidor responde correctamente, completamos la instalación
+                        completeInstallation();
+                    } else {
+                        throw {
+                            response: data,
+                            status: 500
+                        };
+                    }
                 })
                 .catch(error => {
-                    addTerminalLine(`❌ Error: ${error.message}`, 'text-red-400');
+                    clearInterval(interval);
+
+                    let errorMessage = 'Error desconocido';
+                    let errorData = null;
+
+                    if (error.response) {
+                        errorData = error.response.error || error.response;
+                        errorMessage = error.response.message || 'Error en la instalación';
+
+                        // Mostrar información del paso donde falló
+                        if (error.response.step) {
+                            addTerminalLine(`❌ Error en el paso ${error.response.step} de la instalación`,
+                                'text-red-400');
+                        }
+
+                        // Mostrar pasos completados si están disponibles
+                        if (error.response.steps && Array.isArray(error.response.steps)) {
+                            error.response.steps.forEach(step => {
+                                if (step.status === 'success') {
+                                    addTerminalLine(`✅ Paso ${step.step}: ${step.name}`,
+                                        'text-green-400');
+                                } else if (step.status === 'error') {
+                                    addTerminalLine(
+                                        `❌ Paso ${step.step}: ${step.name} - ${step.message || 'Error'}`,
+                                        'text-red-400');
+                                }
+                            });
+                        }
+                    } else {
+                        errorMessage = error.message || 'Error de conexión con el servidor';
+                    }
+
+                    addTerminalLine(`❌ ${errorMessage}`, 'text-red-400');
                     updateStatus('systemStatus', '🔴 Error', 'text-red-400');
+
+                    // Mostrar error detallado si está disponible
+                    if (errorData) {
+                        showDetailedError(errorData);
+                    }
+
+                    // Verificar estado y mostrar botón de rollback si hay tablas creadas
+                    checkInstallationStatus();
+
                     // Permitir reintentar en caso de error
                     startInstallBtn.disabled = false;
                     btnText.textContent = 'REINTENTAR INSTALACIÓN';
@@ -393,28 +702,6 @@
                 }
             ];
             let stepIndex = 0;
-
-            // Función para añadir líneas al terminal
-            function addTerminalLine(text, className = 'text-green-400') {
-                const line = document.createElement('div');
-                line.className = `terminal-line ${className} mb-1`;
-                line.innerHTML = `
-          <span class="text-red-400">redvel@installer</span>
-          <span class="text-white">:</span>
-          <span class="text-blue-400">~</span>
-          <span class="text-white">$ </span>
-          <span>${text}</span>
-        `;
-                terminal.appendChild(line);
-                terminal.scrollTop = terminal.scrollHeight;
-            }
-
-            // Función para actualizar el estado
-            function updateStatus(elementId, text, className) {
-                const element = document.getElementById(elementId);
-                element.textContent = text;
-                element.className = className;
-            }
 
             // Función para completar la instalación
             function completeInstallation() {
