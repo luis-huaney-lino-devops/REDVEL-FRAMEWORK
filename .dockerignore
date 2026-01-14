@@ -37,6 +37,12 @@ CODE_OF_CONDUCT.md
 SECURITY.md
 UPGRADE.md
 
+# Documentación API generada (Scribe)
+RedBack/storage/app/private/scribe/*
+!RedBack/storage/app/private/scribe/.gitkeep
+RedBack/storage/app/private/scribe/collection.json
+RedBack/storage/app/private/scribe/openapi.yaml
+
 # Archivos de build
 bagisto-*.zip
 marketplace-*.zip

@@ -129,7 +129,5 @@ RUN mkdir -p /var/log/supervisor \
 
 EXPOSE 80
 
-CMD ["curl", "-f", "http://localhost/up", "||", "exit", "1"]
-
-ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

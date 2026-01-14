@@ -17,6 +17,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/app/private/scribe/*
+!/storage/app/private/scribe/.gitkeep
 /vendor
 Homestead.json
 Homestead.yaml

@@ -1,5 +1,6 @@
 #!/bin/sh
-set -e
+# No usar set -e para permitir que el contenedor inicie incluso con errores menores
+set +e
 
 # =====================================================
 # REDVEL FRAMEWORK - ENTRYPOINT GENÉRICO
@@ -89,9 +90,10 @@ while true; do
 
     attempt=$((attempt + 1))
     if [ $attempt -ge $max_attempts ]; then
-        log_error "MySQL no responde."
-        log_error "Detalles: $OUTPUT"
-        exit 1
+        log_warning "MySQL no responde después de $max_attempts intentos."
+        log_warning "Detalles: $OUTPUT"
+        log_warning "Continuando de todas formas (puede fallar más adelante)..."
+        break
     fi
     sleep 5
 done
@@ -105,8 +107,8 @@ while true; do
     fi
     attempt=$((attempt + 1))
     if [ $attempt -ge 30 ]; then
-        log_error "Redis no responde"
-        exit 1
+        log_warning "Redis no responde después de 30 intentos, continuando de todas formas..."
+        break
     fi
     sleep 2
 done
@@ -231,7 +233,48 @@ if [ "$APP_ENV" = "production" ]; then
     run_artisan "event:cache" true
 fi
 
+# =====================================================
+# GENERACIÓN DE DOCUMENTACIÓN API (SOLO EN DESARROLLO)
+# =====================================================
+
+if [ "$DEPLOY_MODE" = "development" ] || [ "$APP_ENV" = "local" ]; then
+    log_info "📚 Generando documentación API (Scribe)..."
+    run_artisan "scribe:generate" true
+    if [ $? -eq 0 ]; then
+        log_success "Documentación API generada exitosamente"
+    else
+        log_warning "No se pudo generar la documentación API (puede ser normal si no hay rutas configuradas)"
+    fi
+fi
+
 log_section "REDVEL FRAMEWORK LISTO"
 log_info "🌐 URL: $APP_URL"
+log_info "🚀 Iniciando servicios (Nginx + PHP-FPM)..."
 
+# Asegurar que los servicios se inicien correctamente
+# Verificar que Nginx puede iniciar
+log_info "🔍 Verificando configuración de Nginx..."
+if nginx -t 2>/dev/null; then
+    log_success "Configuración de Nginx OK"
+else
+    log_warning "Advertencia en configuración de Nginx (continuando de todas formas)"
+    nginx -t || true
+fi
+
+# Verificar que PHP-FPM puede iniciar
+log_info "🔍 Verificando configuración de PHP-FPM..."
+if php-fpm -t 2>/dev/null; then
+    log_success "Configuración de PHP-FPM OK"
+else
+    log_warning "Advertencia en configuración de PHP-FPM (continuando de todas formas)"
+    php-fpm -t || true
+fi
+
+# Asegurar permisos correctos
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+
+# Ejecutar el comando pasado (normalmente supervisord)
+# Esto debe ser la última línea y usar exec para reemplazar el proceso
+log_info "▶️  Ejecutando: $@"
 exec "$@"

@@ -43,11 +43,11 @@ services:
           cpus: "0.25"
           memory: 512M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
       interval: 30s
-      timeout: 15s
+      timeout: 10s
       retries: 3
-      start_period: 120s
+      start_period: 60s
 
   # ===================================================
   # FRONTEND (React + Nginx) - DESARROLLO

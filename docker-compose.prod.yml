@@ -42,11 +42,11 @@ services:
           cpus: '0.5'
           memory: 1G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
       interval: 30s
-      timeout: 15s
-      retries: 5
-      start_period: 300s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     labels:
       - "com.docker.compose.project=redvel-prod"
 
