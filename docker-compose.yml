@@ -1,6 +1,5 @@
 # =====================================================
-# DOCKER COMPOSE PARA DOKPLOY (REDVEL FRAMEWORK)
-# VPS: 2 CPU, 8GB RAM, 100GB Disco
+# DOCKER COMPOSE GENERICO (REDVEL FRAMEWORK)
 # =====================================================
 
 services:
@@ -11,28 +10,30 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: redvel-app-prod
+    container_name: redvel-app
     restart: unless-stopped
     ports:
       - "9091:80"
-    environment:
-      - APP_ENV=production
-      - APP_URL=http://168.231.90.23:9091
     env_file:
-      - RedBack/.env.production
+      - RedBack/.env.production 
+    environment: 
+       # Fallback values if env file is missing or variables not set
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - ELASTICSEARCH_HOST=elasticsearch
     volumes:
       - ./.deploy-mode:/etc/redvel/.deploy-mode
-      - app-storage-prod:/var/www/html/storage
-      - app-bootstrap-prod:/var/www/html/bootstrap/cache
+      - app-storage:/var/www/html/storage
+      - app-bootstrap:/var/www/html/bootstrap/cache
     depends_on:
-      mysql-prod:
+      mysql:
         condition: service_healthy
-      redis-prod:
+      redis:
         condition: service_healthy
-      elasticsearch-prod:
+      elasticsearch:
         condition: service_healthy
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
@@ -47,8 +48,6 @@ services:
       timeout: 15s
       retries: 5
       start_period: 300s
-    labels:
-      - "com.docker.compose.project=redvel-prod"
 
   # ===================================================
   # FRONTEND (React + Nginx)
@@ -57,14 +56,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: redvel-frontend-prod
+    container_name: redvel-frontend
     restart: unless-stopped
     ports:
       - "9090:80"
     depends_on:
       - app
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
@@ -74,9 +73,9 @@ services:
   # ===================================================
   # MYSQL 8.0 - Base de Datos
   # ===================================================
-  mysql-prod:
+  mysql:
     image: mysql:8.0
-    container_name: redvel-mysql-prod
+    container_name: redvel-mysql
     restart: unless-stopped
     command:
       - --character-set-server=utf8mb4
@@ -85,13 +84,12 @@ services:
       - --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-RedVelRootSecure2025!}
-      MYSQL_DATABASE: ${DB_DATABASE:-redvel_prod}
-      # MYSQL_USER/PASSWORD removed to rely on ROOT
+      MYSQL_DATABASE: ${DB_DATABASE:-redvel}
     volumes:
-      - mysql-data-prod:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
       - ./docker/mysql-init:/docker-entrypoint-initdb.d
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
@@ -105,27 +103,24 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 180s
+      start_period: 120s
 
   # ===================================================
   # REDIS - Cache y Sesiones
   # ===================================================
-  redis-prod:
+  redis:
     image: redis:7-alpine
-    container_name: redvel-redis-prod
+    container_name: redvel-redis
     restart: unless-stopped
     command: >
       redis-server
       --appendonly yes
       --maxmemory 512mb
       --maxmemory-policy allkeys-lru
-      --save 900 1
-      --save 300 10
-      --save 60 10000
     volumes:
-      - redis-data-prod:/data
+      - redis-data:/data
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
@@ -142,20 +137,19 @@ services:
       start_period: 30s
 
   # ===================================================
-  # ELASTICSEARCH - Búsqueda de Productos
+  # ELASTICSEARCH - Búsqueda
   # ===================================================
-  elasticsearch-prod:
+  elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: redvel-elasticsearch-prod
+    container_name: redvel-elasticsearch
     restart: unless-stopped
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - xpack.security.enrollment.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - bootstrap.memory_lock=true
-      - cluster.name=redvel-cluster-prod
-      - node.name=redvel-node-prod
+      - cluster.name=redvel-cluster
+      - node.name=redvel-node
     ulimits:
       memlock:
         soft: -1
@@ -164,9 +158,9 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - elasticsearch-data-prod:/usr/share/elasticsearch/data
+      - elasticsearch-data:/usr/share/elasticsearch/data
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
@@ -183,84 +177,84 @@ services:
       start_period: 60s
 
   # ===================================================
-  # QUEUE WORKER - Procesamiento en Background
+  # QUEUE WORKER
   # ===================================================
-  queue-worker-prod:
+  queue-worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: redvel-queue-prod
+    container_name: redvel-queue
     restart: unless-stopped
     command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
     env_file:
       - RedBack/.env.production
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
     volumes:
-      - app-storage-prod:/var/www/html/storage
+      - app-storage:/var/www/html/storage
     depends_on:
-      mysql-prod:
+      mysql:
         condition: service_healthy
-      redis-prod:
+      redis:
         condition: service_healthy
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
           cpus: '0.25'
           memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 256M
 
   # ===================================================
-  # SCHEDULER - Cron Jobs de Laravel
+  # SCHEDULER
   # ===================================================
-  scheduler-prod:
+  scheduler:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: redvel-scheduler-prod
+    container_name: redvel-scheduler
     restart: unless-stopped
     command: >
       sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
     env_file:
       - RedBack/.env.production
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
     volumes:
-      - app-storage-prod:/var/www/html/storage
+      - app-storage:/var/www/html/storage
     depends_on:
-      mysql-prod:
+      mysql:
         condition: service_healthy
-      redis-prod:
+      redis:
         condition: service_healthy
     networks:
-      - redvel-network-prod
+      - redvel-network
     deploy:
       resources:
         limits:
           cpus: '0.1'
           memory: 256M
-        reservations:
-          cpus: '0.05'
-          memory: 128M
 
 # =====================================================
 # REDES
 # =====================================================
 networks:
-  redvel-network-prod:
+  redvel-network:
     driver: bridge
 
 # =====================================================
-# VOLÚMENES PERSISTENTES
+# VOLÚMENES
 # =====================================================
 volumes:
-  mysql-data-prod:
+  mysql-data:
     driver: local
-  redis-data-prod:
+  redis-data:
     driver: local
-  elasticsearch-data-prod:
+  elasticsearch-data:
     driver: local
-  app-storage-prod:
+  app-storage:
     driver: local
-  app-bootstrap-prod:
+  app-bootstrap:
     driver: local

@@ -129,115 +129,65 @@ log_info "   APP_ENV: ${APP_ENV:-NO DEFINIDO}"
 # =====================================================
 
 log_info "⏳ Esperando a que MySQL esté listo..."
-log_info "   Host: ${DB_HOST:-NO DEFINIDO} | BD: ${DB_DATABASE:-NO DEFINIDO}"
+log_info "   Host: ${DB_HOST:-mysql} | BD: ${DB_DATABASE:-NO DEFINIDO}"
 
-max_attempts=30
-attempt=0
-sleep 5
+# Esperar a que MySQL esté disponible
+wait_for_mysql() {
+    local host="${1:-mysql}"
+    local port="${2:-3306}"
+    local user="${3:-root}"
+    local password="$4"
+    local max_retries=60
+    local count=0
 
-if command -v mariadb >/dev/null 2>&1; then
-    MYSQL_CMD="mariadb"
-    SSL_ARGS="--skip-ssl"
-elif mysql --version 2>&1 | grep -q "MariaDB"; then
-    MYSQL_CMD="mysql"
-    SSL_ARGS="--skip-ssl"
-else
-    MYSQL_CMD="mysql"
-    SSL_ARGS="--ssl-mode=DISABLED"
-fi
-
-if [ -z "$DB_HOST" ] || [ -z "$DB_DATABASE" ] || [ -z "$DB_USERNAME" ]; then
-    log_error "❌ Variables de base de datos incompletas. No se puede conectar a MySQL."
-    log_error "   Verifica que DB_HOST, DB_DATABASE y DB_USERNAME estén definidos en tu .env"
-else
-    # Verificar resolución DNS primero
-    log_info "🔍 Verificando resolución DNS para ${DB_HOST}..."
-    DNS_RESOLVED=false
-    if getent hosts "$DB_HOST" >/dev/null 2>&1; then
-        DNS_RESOLVED=true
-        RESOLVED_IP=$(getent hosts "$DB_HOST" | awk '{print $1}' | head -1)
-        log_success "✅ DNS resuelto: ${DB_HOST} -> ${RESOLVED_IP}"
-    elif command -v nslookup >/dev/null 2>&1 && nslookup "$DB_HOST" >/dev/null 2>&1; then
-        DNS_RESOLVED=true
-        log_success "✅ DNS resuelto: ${DB_HOST}"
-    else
-        log_warning "⚠️  No se puede resolver DNS para ${DB_HOST}"
-        log_warning "   Esto puede indicar que:"
-        log_warning "   1. El contenedor MySQL no está corriendo"
-        log_warning "   2. Los contenedores no están en la misma red Docker"
-        log_warning "   3. El nombre del servicio no coincide con DB_HOST"
-        log_warning "   Verifica con: docker ps | grep mysql"
-        log_warning "   Y: docker network inspect redvel-network-dev (o redvel-network-prod)"
-    fi
-    
-    # Verificar conectividad de red si DNS está resuelto
-    if [ "$DNS_RESOLVED" = "true" ]; then
-        log_info "🔍 Verificando conectividad de red..."
-        if command -v nc >/dev/null 2>&1; then
-            if nc -z -w 2 "$DB_HOST" "${DB_PORT:-3306}" 2>/dev/null; then
-                log_success "✅ Puerto ${DB_PORT:-3306} accesible en ${DB_HOST}"
-            else
-                log_warning "⚠️  Puerto ${DB_PORT:-3306} no accesible en ${DB_HOST}"
-            fi
-        elif command -v timeout >/dev/null 2>&1 && timeout 2 bash -c "echo > /dev/tcp/$DB_HOST/${DB_PORT:-3306}" 2>/dev/null; then
-            log_success "✅ Puerto ${DB_PORT:-3306} accesible en ${DB_HOST}"
-        else
-            log_warning "⚠️  No se pudo verificar conectividad de red (puede ser normal si MySQL aún no está listo)"
-        fi
-    fi
-    
-    while true; do
-        set +e
-        OUTPUT=$($MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
-            --connect-timeout=5 \
-            $SSL_ARGS \
-            -e "SELECT 1" "$DB_DATABASE" 2>&1)
-        EXIT_CODE=$?
-        set -e
-
-        if [ $EXIT_CODE -eq 0 ]; then
+    while [ $count -lt $max_retries ]; do
+        if mysqladmin ping -h "$host" -P "$port" -u "$user" -p"$password" --silent; then
             log_success "MySQL está listo!"
-            break
+            return 0
         fi
-
-        attempt=$((attempt + 1))
-        if [ $attempt -ge $max_attempts ]; then
-            log_warning "MySQL no responde después de $max_attempts intentos."
-            log_warning "Detalles: $OUTPUT"
-            if echo "$OUTPUT" | grep -q "getaddrinfo\|Unknown server host"; then
-                log_error "❌ Error de resolución DNS detectado"
-                log_error "   El hostname '${DB_HOST}' no se puede resolver"
-                log_error "   Verifica que:"
-                log_error "   1. El contenedor MySQL esté corriendo: docker ps | grep mysql"
-                log_error "   2. Ambos contenedores estén en la misma red Docker"
-                log_error "   3. El nombre del servicio en docker-compose coincida con DB_HOST"
-                log_error "   4. Para desarrollo: DB_HOST debe ser 'mysql-dev'"
-                log_error "   5. Para producción: DB_HOST debe ser 'mysql-prod'"
-            fi
-            log_warning "Continuando de todas formas (puede fallar más adelante)..."
-            break
-        fi
-        log_info "   Intento $attempt/$max_attempts - Esperando MySQL..."
-        sleep 5
+        count=$((count + 1))
+        echo -n "."
+        sleep 2
     done
-fi
 
+    log_error "❌ No se pudo conectar a MySQL después de $((max_retries * 2)) segundos."
+    return 1
+}
+
+# Usar values por defecto si no están definidos
+DB_HOST="${DB_HOST:-mysql}"
+DB_PORT="${DB_PORT:-3306}"
+DB_USERNAME="${DB_USERNAME:-root}"
+
+wait_for_mysql "$DB_HOST" "$DB_PORT" "$DB_USERNAME" "$DB_PASSWORD"
+
+# =====================================================
+# ESPERAR REDIS
+# =====================================================
 log_info "⏳ Esperando a que Redis esté listo..."
-log_info "   Host: ${REDIS_HOST:-redis} | Puerto: ${REDIS_PORT:-6379}"
-attempt=0
-while true; do
-    if redis-cli -h "${REDIS_HOST:-redis}" -p "${REDIS_PORT:-6379}" --no-auth-warning ping 2>/dev/null | grep -q PONG; then
-        log_success "Redis está listo!"
-        break
-    fi
-    attempt=$((attempt + 1))
-    if [ $attempt -ge 30 ]; then
-        log_warning "Redis no responde después de 30 intentos, continuando de todas formas..."
-        break
-    fi
-    log_info "   Intento $attempt/30 - Esperando Redis..."
-    sleep 2
-done
+REDIS_HOST="${REDIS_HOST:-redis}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+
+wait_for_redis() {
+    local host="$1"
+    local port="$2"
+    local max_retries=30
+    local count=0
+
+    while [ $count -lt $max_retries ]; do
+        if timeout 1 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
+             log_success "Redis está listo!"
+             return 0
+        fi
+        count=$((count + 1))
+        sleep 1
+    done
+    
+    log_warning "⚠️  Redis no responde, continuando de todas formas..."
+    return 1
+}
+
+wait_for_redis "$REDIS_HOST" "$REDIS_PORT"
 
 # =====================================================
 # CONFIGURAR DIRECTORIOS
