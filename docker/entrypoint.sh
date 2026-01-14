@@ -150,6 +150,42 @@ if [ -z "$DB_HOST" ] || [ -z "$DB_DATABASE" ] || [ -z "$DB_USERNAME" ]; then
     log_error "❌ Variables de base de datos incompletas. No se puede conectar a MySQL."
     log_error "   Verifica que DB_HOST, DB_DATABASE y DB_USERNAME estén definidos en tu .env"
 else
+    # Verificar resolución DNS primero
+    log_info "🔍 Verificando resolución DNS para ${DB_HOST}..."
+    DNS_RESOLVED=false
+    if getent hosts "$DB_HOST" >/dev/null 2>&1; then
+        DNS_RESOLVED=true
+        RESOLVED_IP=$(getent hosts "$DB_HOST" | awk '{print $1}' | head -1)
+        log_success "✅ DNS resuelto: ${DB_HOST} -> ${RESOLVED_IP}"
+    elif command -v nslookup >/dev/null 2>&1 && nslookup "$DB_HOST" >/dev/null 2>&1; then
+        DNS_RESOLVED=true
+        log_success "✅ DNS resuelto: ${DB_HOST}"
+    else
+        log_warning "⚠️  No se puede resolver DNS para ${DB_HOST}"
+        log_warning "   Esto puede indicar que:"
+        log_warning "   1. El contenedor MySQL no está corriendo"
+        log_warning "   2. Los contenedores no están en la misma red Docker"
+        log_warning "   3. El nombre del servicio no coincide con DB_HOST"
+        log_warning "   Verifica con: docker ps | grep mysql"
+        log_warning "   Y: docker network inspect redvel-network-dev (o redvel-network-prod)"
+    fi
+    
+    # Verificar conectividad de red si DNS está resuelto
+    if [ "$DNS_RESOLVED" = "true" ]; then
+        log_info "🔍 Verificando conectividad de red..."
+        if command -v nc >/dev/null 2>&1; then
+            if nc -z -w 2 "$DB_HOST" "${DB_PORT:-3306}" 2>/dev/null; then
+                log_success "✅ Puerto ${DB_PORT:-3306} accesible en ${DB_HOST}"
+            else
+                log_warning "⚠️  Puerto ${DB_PORT:-3306} no accesible en ${DB_HOST}"
+            fi
+        elif command -v timeout >/dev/null 2>&1 && timeout 2 bash -c "echo > /dev/tcp/$DB_HOST/${DB_PORT:-3306}" 2>/dev/null; then
+            log_success "✅ Puerto ${DB_PORT:-3306} accesible en ${DB_HOST}"
+        else
+            log_warning "⚠️  No se pudo verificar conectividad de red (puede ser normal si MySQL aún no está listo)"
+        fi
+    fi
+    
     while true; do
         set +e
         OUTPUT=$($MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
@@ -168,6 +204,16 @@ else
         if [ $attempt -ge $max_attempts ]; then
             log_warning "MySQL no responde después de $max_attempts intentos."
             log_warning "Detalles: $OUTPUT"
+            if echo "$OUTPUT" | grep -q "getaddrinfo\|Unknown server host"; then
+                log_error "❌ Error de resolución DNS detectado"
+                log_error "   El hostname '${DB_HOST}' no se puede resolver"
+                log_error "   Verifica que:"
+                log_error "   1. El contenedor MySQL esté corriendo: docker ps | grep mysql"
+                log_error "   2. Ambos contenedores estén en la misma red Docker"
+                log_error "   3. El nombre del servicio en docker-compose coincida con DB_HOST"
+                log_error "   4. Para desarrollo: DB_HOST debe ser 'mysql-dev'"
+                log_error "   5. Para producción: DB_HOST debe ser 'mysql-prod'"
+            fi
             log_warning "Continuando de todas formas (puede fallar más adelante)..."
             break
         fi
