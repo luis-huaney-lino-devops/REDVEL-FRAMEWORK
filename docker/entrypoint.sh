@@ -231,34 +231,35 @@ else
     log_warning "⚠️ Archivo .deploy-mode no encontrado en $DEPLOY_MODE_FILE"
 fi
 
-if [ ! -f ".env" ]; then
-    DEPLOY_MODE="${DEPLOY_MODE:-production}"
-    log_info "📄 Archivo .env no existe, creando desde template..."
-    
-    if [ "$DEPLOY_MODE" = "development" ] && [ -f ".env.developer" ]; then
-        log_info "📄 Usando .env.developer"
-        cp .env.developer .env
-    elif [ "$DEPLOY_MODE" = "production" ] && [ -f ".env.production" ]; then
-        log_info "📄 Usando .env.production"
-        cp .env.production .env
-    elif [ -f ".env.production" ]; then
-        log_info "📄 Usando .env.production (fallback)"
-        cp .env.production .env
-    elif [ -f ".env.example" ]; then
-        log_warning "⚠️  Usando .env.example (configuración por defecto)"
-        cp .env.example .env
-    else
-        log_error "❌ No se encontró ningún archivo .env, .env.production, .env.developer o .env.example"
-        log_error "   El contenedor no puede continuar sin un archivo .env"
-        exit 1
-    fi
-    
-    # Cargar variables desde el .env recién creado
+# Limpiar .env anterior para forzar la actualización
+if [ -f ".env" ]; then
+    log_info "🧹 Eliminando .env anterior para regenerarlo..."
+    rm .env
+fi
+
+DEPLOY_MODE="${DEPLOY_MODE:-production}"
+log_info "⚙️  Modo de despliegue: $DEPLOY_MODE"
+
+if [ "$DEPLOY_MODE" = "development" ] && [ -f ".env.developer" ]; then
+    log_info "📄 Copiando .env.developer -> .env"
+    cp .env.developer .env
+elif [ "$DEPLOY_MODE" = "production" ] && [ -f ".env.production" ]; then
+    log_info "📄 Copiando .env.production -> .env"
+    cp .env.production .env
+elif [ -f ".env.production" ]; then
+    log_info "📄 Copiando .env.production -> .env (fallback)"
+    cp .env.production .env
+else
+    log_error "❌ No se encontró el archivo de entorno adecuado para $DEPLOY_MODE"
+    exit 1
+fi
+
+# Cargar variables desde el .env recién creado
+if [ -f ".env" ]; then
     set -a
     . ./.env
     set +a
-else
-    log_info "✅ Archivo .env existe"
+    log_info "✅ Variables de entorno cargadas"
 fi
 
 # Generar Key si falta

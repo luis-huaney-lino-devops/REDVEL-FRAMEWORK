@@ -14,8 +14,7 @@ services:
     restart: unless-stopped
     ports:
       - "9091:80"
-    env_file:
-      - RedBack/.env.production 
+    env_file: [] 
     environment: 
        # Fallback values if env file is missing or variables not set
       - DB_HOST=mysql
@@ -186,8 +185,8 @@ services:
     container_name: redvel-queue
     restart: unless-stopped
     command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
-    env_file:
-      - RedBack/.env.production
+    env_file: []
+
     environment:
       - DB_HOST=mysql
       - REDIS_HOST=redis
@@ -217,8 +216,7 @@ services:
     restart: unless-stopped
     command: >
       sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
-    env_file:
-      - RedBack/.env.production
+    env_file: []
     environment:
       - DB_HOST=mysql
       - REDIS_HOST=redis
