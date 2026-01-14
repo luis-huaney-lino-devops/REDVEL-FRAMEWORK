@@ -15,13 +15,15 @@ node_modules
 npm-debug.log
 yarn-error.log
 
-# Archivos de desarrollo
+# Archivos de desarrollo (NO ignorar .env.production y .env.developer para Docker)
 .env
 .env.local
 .env.development
-
-
 .env copy.example
+
+# Mantener .env.production y .env.developer para que Docker pueda usarlos
+# !RedBack/.env.production
+# !RedBack/.env.developer
 
 # Tests
 tests

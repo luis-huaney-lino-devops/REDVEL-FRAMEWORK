@@ -18,6 +18,15 @@ services:
     environment:
       - APP_ENV=production
       - APP_URL=http://168.231.90.23:9091
+      # Variables de base de datos (fallback si no están en .env)
+      - DB_HOST=${DB_HOST:-mysql-prod}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_DATABASE=${DB_DATABASE:-redvel_prod}
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-RedVelRootSecure2025!}
+      # Variables de Redis (fallback si no están en .env)
+      - REDIS_HOST=${REDIS_HOST:-redis-prod}
+      - REDIS_PORT=${REDIS_PORT:-6379}
     env_file:
       - RedBack/.env.production
     volumes:

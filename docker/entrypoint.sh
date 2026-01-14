@@ -53,11 +53,60 @@ run_artisan() {
 log_section "INICIANDO REDVEL FRAMEWORK"
 
 # =====================================================
+# VERIFICAR VARIABLES DE ENTORNO CRÍTICAS
+# =====================================================
+
+log_info "🔍 Verificando variables de entorno..."
+
+# Cargar variables desde .env si existen
+if [ -f ".env" ]; then
+    log_info "📄 Cargando variables desde .env..."
+    set -a
+    . ./.env
+    set +a
+fi
+
+# Verificar variables críticas
+if [ -z "$DB_HOST" ]; then
+    log_error "❌ DB_HOST no está definido"
+    log_info "💡 Asegúrate de que DB_HOST esté en tu archivo .env"
+fi
+
+if [ -z "$DB_DATABASE" ]; then
+    log_error "❌ DB_DATABASE no está definido"
+    log_info "💡 Asegúrate de que DB_DATABASE esté en tu archivo .env"
+fi
+
+if [ -z "$DB_USERNAME" ]; then
+    log_error "❌ DB_USERNAME no está definido"
+    log_info "💡 Asegúrate de que DB_USERNAME esté en tu archivo .env"
+fi
+
+if [ -z "$DB_PASSWORD" ]; then
+    log_warning "⚠️  DB_PASSWORD no está definido (puede ser intencional)"
+fi
+
+if [ -z "$REDIS_HOST" ]; then
+    log_warning "⚠️  REDIS_HOST no está definido, usando valor por defecto: redis"
+    REDIS_HOST="${REDIS_HOST:-redis}"
+fi
+
+# Mostrar información de conexión (sin contraseña)
+log_info "📊 Configuración detectada:"
+log_info "   DB_HOST: ${DB_HOST:-NO DEFINIDO}"
+log_info "   DB_DATABASE: ${DB_DATABASE:-NO DEFINIDO}"
+log_info "   DB_USERNAME: ${DB_USERNAME:-NO DEFINIDO}"
+log_info "   DB_PORT: ${DB_PORT:-3306}"
+log_info "   REDIS_HOST: ${REDIS_HOST:-redis}"
+log_info "   REDIS_PORT: ${REDIS_PORT:-6379}"
+log_info "   APP_ENV: ${APP_ENV:-NO DEFINIDO}"
+
+# =====================================================
 # ESPERAR SERVICIOS (BD y Redis)
 # =====================================================
 
 log_info "⏳ Esperando a que MySQL esté listo..."
-log_info "   Host: $DB_HOST | BD: $DB_DATABASE"
+log_info "   Host: ${DB_HOST:-NO DEFINIDO} | BD: ${DB_DATABASE:-NO DEFINIDO}"
 
 max_attempts=30
 attempt=0
@@ -74,34 +123,41 @@ else
     SSL_ARGS="--ssl-mode=DISABLED"
 fi
 
-while true; do
-    set +e
-    OUTPUT=$($MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
-        --connect-timeout=5 \
-        $SSL_ARGS \
-        -e "SELECT 1" "$DB_DATABASE" 2>&1)
-    EXIT_CODE=$?
-    set -e
+if [ -z "$DB_HOST" ] || [ -z "$DB_DATABASE" ] || [ -z "$DB_USERNAME" ]; then
+    log_error "❌ Variables de base de datos incompletas. No se puede conectar a MySQL."
+    log_error "   Verifica que DB_HOST, DB_DATABASE y DB_USERNAME estén definidos en tu .env"
+else
+    while true; do
+        set +e
+        OUTPUT=$($MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
+            --connect-timeout=5 \
+            $SSL_ARGS \
+            -e "SELECT 1" "$DB_DATABASE" 2>&1)
+        EXIT_CODE=$?
+        set -e
 
-    if [ $EXIT_CODE -eq 0 ]; then
-        log_success "MySQL está listo!"
-        break
-    fi
+        if [ $EXIT_CODE -eq 0 ]; then
+            log_success "MySQL está listo!"
+            break
+        fi
 
-    attempt=$((attempt + 1))
-    if [ $attempt -ge $max_attempts ]; then
-        log_warning "MySQL no responde después de $max_attempts intentos."
-        log_warning "Detalles: $OUTPUT"
-        log_warning "Continuando de todas formas (puede fallar más adelante)..."
-        break
-    fi
-    sleep 5
-done
+        attempt=$((attempt + 1))
+        if [ $attempt -ge $max_attempts ]; then
+            log_warning "MySQL no responde después de $max_attempts intentos."
+            log_warning "Detalles: $OUTPUT"
+            log_warning "Continuando de todas formas (puede fallar más adelante)..."
+            break
+        fi
+        log_info "   Intento $attempt/$max_attempts - Esperando MySQL..."
+        sleep 5
+    done
+fi
 
 log_info "⏳ Esperando a que Redis esté listo..."
+log_info "   Host: ${REDIS_HOST:-redis} | Puerto: ${REDIS_PORT:-6379}"
 attempt=0
 while true; do
-    if redis-cli -h "$REDIS_HOST" -p "${REDIS_PORT:-6379}" --no-auth-warning ping 2>/dev/null | grep -q PONG; then
+    if redis-cli -h "${REDIS_HOST:-redis}" -p "${REDIS_PORT:-6379}" --no-auth-warning ping 2>/dev/null | grep -q PONG; then
         log_success "Redis está listo!"
         break
     fi
@@ -110,6 +166,7 @@ while true; do
         log_warning "Redis no responde después de 30 intentos, continuando de todas formas..."
         break
     fi
+    log_info "   Intento $attempt/30 - Esperando Redis..."
     sleep 2
 done
 
@@ -157,6 +214,8 @@ fi
 
 if [ ! -f ".env" ]; then
     DEPLOY_MODE="${DEPLOY_MODE:-production}"
+    log_info "📄 Archivo .env no existe, creando desde template..."
+    
     if [ "$DEPLOY_MODE" = "development" ] && [ -f ".env.developer" ]; then
         log_info "📄 Usando .env.developer"
         cp .env.developer .env
@@ -164,10 +223,23 @@ if [ ! -f ".env" ]; then
         log_info "📄 Usando .env.production"
         cp .env.production .env
     elif [ -f ".env.production" ]; then
+        log_info "📄 Usando .env.production (fallback)"
         cp .env.production .env
     elif [ -f ".env.example" ]; then
+        log_warning "⚠️  Usando .env.example (configuración por defecto)"
         cp .env.example .env
+    else
+        log_error "❌ No se encontró ningún archivo .env, .env.production, .env.developer o .env.example"
+        log_error "   El contenedor no puede continuar sin un archivo .env"
+        exit 1
     fi
+    
+    # Cargar variables desde el .env recién creado
+    set -a
+    . ./.env
+    set +a
+else
+    log_info "✅ Archivo .env existe"
 fi
 
 # Generar Key si falta
@@ -277,4 +349,9 @@ chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || 
 # Ejecutar el comando pasado (normalmente supervisord)
 # Esto debe ser la última línea y usar exec para reemplazar el proceso
 log_info "▶️  Ejecutando: $@"
+log_info "📝 Los logs de Nginx y PHP-FPM aparecerán a continuación..."
+log_info "💡 Si no ves logs, verifica con: docker logs -f redvel-app-prod"
+echo ""
+
+# Ejecutar supervisord que manejará Nginx y PHP-FPM
 exec "$@"
