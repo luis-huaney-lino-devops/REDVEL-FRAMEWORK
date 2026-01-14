@@ -53,6 +53,29 @@ run_artisan() {
 log_section "INICIANDO REDVEL FRAMEWORK"
 
 # =====================================================
+# DETECTAR ROL DEL CONTENEDOR (app/queue/scheduler)
+# =====================================================
+#
+# Este mismo ENTRYPOINT se usa para varios servicios (app, queue-worker, scheduler).
+# En workers/scheduler NO conviene ejecutar migraciones/seeds/optimize/scribe en cada arranque,
+# porque:
+# - si el comando falla, el contenedor entra en bucle de restart
+# - se repiten migraciones/optimización innecesariamente
+#
+CMDLINE="$*"
+ROLE="app"
+case "$CMDLINE" in
+    *"queue:work"*|*"queue:listen"*)
+        ROLE="queue"
+        ;;
+    *"schedule:run"*)
+        ROLE="scheduler"
+        ;;
+esac
+
+log_info "🧩 Rol detectado: $ROLE"
+
+# =====================================================
 # VERIFICAR VARIABLES DE ENTORNO CRÍTICAS
 # =====================================================
 
@@ -252,71 +275,75 @@ if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ]; then
     fi
 fi
 
-# =====================================================
-# MIGRACIONES Y SEEDS
-# =====================================================
+if [ "$ROLE" = "app" ]; then
+    # =====================================================
+    # MIGRACIONES Y SEEDS (solo contenedor app)
+    # =====================================================
 
-# Verificar instalación inicial
-if [ "$PRIMERA_INSTALACION" = "true" ]; then
-    log_section "PRIMERA INSTALACIÓN DETECTADA"
-    
-    # Revisar si hay tablas
-    TABLES_EXIST=$($MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
-        $SSL_ARGS -D"$DB_DATABASE" -e "SHOW TABLES LIKE 'migrations';" 2>/dev/null | wc -l)
+    # Verificar instalación inicial
+    if [ "$PRIMERA_INSTALACION" = "true" ]; then
+        log_section "PRIMERA INSTALACIÓN DETECTADA"
         
-    if [ "$TABLES_EXIST" -le 1 ]; then
-        log_info "📦 Ejecutando migraciones..."
-        run_artisan "migrate --force"
-        
-        log_info "🌱 Ejecutando seeders..."
-        run_artisan "db:seed --force" || log_warning "Error en seeders, continuando..."
+        # Revisar si hay tablas
+        TABLES_EXIST=$($MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
+            $SSL_ARGS -D"$DB_DATABASE" -e "SHOW TABLES LIKE 'migrations';" 2>/dev/null | wc -l)
+            
+        if [ "$TABLES_EXIST" -le 1 ]; then
+            log_info "📦 Ejecutando migraciones..."
+            run_artisan "migrate --force"
+            
+            log_info "🌱 Ejecutando seeders..."
+            run_artisan "db:seed --force" || log_warning "Error en seeders, continuando..."
 
-        log_info "📝 Registrando instalación en base de datos..."
-        # Insertar registro de instalación para evitar redirección a /install
-        $MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
-             $SSL_ARGS -D"$DB_DATABASE" \
-             -e "INSERT INTO instalacion (estado_instalacion) VALUES (1);" || log_warning "No se pudo registrar la instalación en la tabla 'instalacion'."
+            log_info "📝 Registrando instalación en base de datos..."
+            # Insertar registro de instalación para evitar redirección a /install
+            $MYSQL_CMD -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
+                 $SSL_ARGS -D"$DB_DATABASE" \
+                 -e "INSERT INTO instalacion (estado_instalacion) VALUES (1);" || log_warning "No se pudo registrar la instalación en la tabla 'instalacion'."
+        else
+            log_warning "Tablas ya existen, saltando migración inicial."
+        fi
     else
-        log_warning "Tablas ya existen, saltando migración inicial."
+        log_info "🔄 Modo Actualización: Ejecutando migraciones pendientes..."
+        run_artisan "migrate --force" true
+    fi
+
+    # =====================================================
+    # OPTIMIZACIÓN Y LINK (solo contenedor app)
+    # =====================================================
+
+    log_info "🔗 Configurando Storage Link..."
+    if [ ! -L "public/storage" ]; then
+        rm -rf public/storage
+        run_artisan "storage:link" true
+    fi
+
+    log_info "⚡ Limpiando y Cacheando Configuración..."
+    run_artisan "optimize:clear" true
+
+    if [ "$APP_ENV" = "production" ]; then
+        log_info "⚡ Optimizando para Producción..."
+        run_artisan "config:cache" true
+        run_artisan "route:cache" true
+        run_artisan "view:cache" true
+        run_artisan "event:cache" true
+    fi
+
+    # =====================================================
+    # GENERACIÓN DE DOCUMENTACIÓN API (SOLO EN DESARROLLO)
+    # =====================================================
+
+    if [ "$DEPLOY_MODE" = "development" ] || [ "$APP_ENV" = "local" ]; then
+        log_info "📚 Generando documentación API (Scribe)..."
+        run_artisan "scribe:generate" true
+        if [ $? -eq 0 ]; then
+            log_success "Documentación API generada exitosamente"
+        else
+            log_warning "No se pudo generar la documentación API (puede ser normal si no hay rutas configuradas)"
+        fi
     fi
 else
-    log_info "🔄 Modo Actualización: Ejecutando migraciones pendientes..."
-    run_artisan "migrate --force" true
-fi
-
-# =====================================================
-# OPTIMIZACIÓN Y LINK
-# =====================================================
-
-log_info "🔗 Configurando Storage Link..."
-if [ ! -L "public/storage" ]; then
-    rm -rf public/storage
-    run_artisan "storage:link" true
-fi
-
-log_info "⚡ Limpiando y Cacheando Configuración..."
-run_artisan "optimize:clear" true
-
-if [ "$APP_ENV" = "production" ]; then
-    log_info "⚡ Optimizando para Producción..."
-    run_artisan "config:cache" true
-    run_artisan "route:cache" true
-    run_artisan "view:cache" true
-    run_artisan "event:cache" true
-fi
-
-# =====================================================
-# GENERACIÓN DE DOCUMENTACIÓN API (SOLO EN DESARROLLO)
-# =====================================================
-
-if [ "$DEPLOY_MODE" = "development" ] || [ "$APP_ENV" = "local" ]; then
-    log_info "📚 Generando documentación API (Scribe)..."
-    run_artisan "scribe:generate" true
-    if [ $? -eq 0 ]; then
-        log_success "Documentación API generada exitosamente"
-    else
-        log_warning "No se pudo generar la documentación API (puede ser normal si no hay rutas configuradas)"
-    fi
+    log_info "⏭️  Saltando migraciones/optimizaciones (rol: $ROLE)"
 fi
 
 log_section "REDVEL FRAMEWORK LISTO"

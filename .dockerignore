@@ -21,6 +21,12 @@ yarn-error.log
 .env.development
 .env copy.example
 
+# Evitar que se cuele un .env local dentro de la imagen (especialmente en RedBack/)
+RedBack/.env
+RedBack/.env.*
+!RedBack/.env.production
+!RedBack/.env.developer
+
 # Mantener .env.production y .env.developer para que Docker pueda usarlos
 # !RedBack/.env.production
 # !RedBack/.env.developer

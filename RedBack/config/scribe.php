@@ -1,9 +1,110 @@
 <?php
 
-use Knuckles\Scribe\Extracting\Strategies;
-use Knuckles\Scribe\Config\Defaults;
-use Knuckles\Scribe\Config\AuthIn;
-use function Knuckles\Scribe\Config\{removeStrategies, configureStrategy};
+/**
+ * Nota importante (Docker/producción):
+ * En este proyecto, Scribe está en require-dev, pero este archivo de config se carga siempre
+ * (también en producción y en cualquier `php artisan ...`).
+ *
+ * Si Scribe no está instalado (por ejemplo, `composer install --no-dev`), referenciar clases
+ * de Scribe aquí causa un fatal error y rompe:
+ * - `php artisan queue:work` (provoca que el contenedor del worker se reinicie en bucle)
+ * - migraciones/optimize en entrypoint
+ * - incluso el bootstrap del framework si algo toca la config
+ *
+ * Por eso, este config se "autoprotege": si Scribe no está presente, devolvemos un config
+ * mínimo sin depender de clases de Scribe.
+ */
+
+$hasScribe = class_exists(\Knuckles\Scribe\Config\Defaults::class);
+
+if (!$hasScribe) {
+    return [
+        'title' => config('app.name') . ' API Documentation',
+        'description' => 'Documentación automática de la API de REDVEL Framework. Generada automáticamente desde las rutas y controladores.',
+        'intro_text' => <<<INTRO
+        Esta documentación proporciona toda la información necesaria para trabajar con nuestra API.
+
+        <aside>Mientras navegas, verás ejemplos de código para trabajar con la API en diferentes lenguajes de programación en el área oscura a la derecha (o como parte del contenido en móvil).
+        Puedes cambiar el lenguaje usado con las pestañas en la parte superior derecha (o desde el menú de navegación en la parte superior izquierda en móvil).</aside>
+        INTRO,
+        'base_url' => env('APP_URL', config('app.url')),
+        'routes' => [
+            [
+                'match' => [
+                    'prefixes' => ['api/*'],
+                    'domains' => ['*'],
+                ],
+                'include' => [],
+                'exclude' => [],
+            ],
+        ],
+        'type' => 'laravel',
+        'theme' => 'default',
+        'static' => [
+            'output_path' => 'public/docs',
+        ],
+        'laravel' => [
+            'add_routes' => true,
+            'docs_url' => '/docs',
+            'assets_directory' => null,
+            'middleware' => [\App\Http\Middleware\EnsureApiDocEnabled::class],
+        ],
+        'external' => [
+            'html_attributes' => [],
+        ],
+        'try_it_out' => [
+            'enabled' => true,
+            'base_url' => env('APP_URL', config('app.url')),
+            'use_csrf' => false,
+            'csrf_url' => '/sanctum/csrf-cookie',
+        ],
+        'auth' => [
+            'enabled' => true,
+            'default' => false,
+            // Evitamos enums/clases de Scribe cuando no está instalado
+            'in' => 'bearer',
+            'name' => 'Authorization',
+            'use_value' => env('SCRIBE_AUTH_KEY', 'Bearer {token}'),
+            'placeholder' => ' {your-token-here}',
+            'extra_info' => 'Para obtener un token, realiza un POST a `/api/login` con tus credenciales. El token JWT será retornado en la respuesta.',
+        ],
+        'example_languages' => [
+            'bash',
+            'javascript',
+        ],
+        'postman' => [
+            'enabled' => true,
+            'overrides' => [],
+        ],
+        'openapi' => [
+            'enabled' => true,
+            'version' => '3.0.3',
+            'overrides' => [],
+            'generators' => [],
+        ],
+        'groups' => [
+            'default' => 'Endpoints',
+            'order' => [],
+        ],
+        'logo' => false,
+        'last_updated' => 'Última actualización: {date:d/m/Y}',
+        'examples' => [
+            'faker_seed' => 1234,
+            'models_source' => ['factoryCreate', 'factoryMake', 'databaseFirst'],
+        ],
+        // Sin Scribe instalado, no podemos declarar estrategias basadas en clases de Scribe
+        'strategies' => [],
+        'database_connections_to_transact' => [config('database.default')],
+        'fractal' => [
+            'serializer' => null,
+        ],
+    ];
+}
+
+$authIn = 'bearer';
+if (function_exists('enum_exists') && enum_exists(\Knuckles\Scribe\Config\AuthIn::class)) {
+    $authIn = \Knuckles\Scribe\Config\AuthIn::BEARER->value;
+}
 
 return [
     // The HTML <title> for the generated documentation.
@@ -102,7 +203,7 @@ return [
         'default' => false,
 
         // Where is the auth value meant to be sent in a request?
-        'in' => AuthIn::BEARER->value,
+        'in' => $authIn,
 
         // The name of the auth parameter (e.g. token, key, apiKey) or header (e.g. Authorization, Api-Key).
         'name' => 'Authorization',
@@ -175,29 +276,29 @@ return [
         'metadata' => [
             // Nuestra estrategia personalizada primero para detectar JWT automáticamente
             \App\Extracting\Strategies\DetectJwtMiddleware::class,
-            ...Defaults::METADATA_STRATEGIES,
+            ...\Knuckles\Scribe\Config\Defaults::METADATA_STRATEGIES,
         ],
         'headers' => [
-            ...Defaults::HEADERS_STRATEGIES,
-            Strategies\StaticData::withSettings(data: [
+            ...\Knuckles\Scribe\Config\Defaults::HEADERS_STRATEGIES,
+            \Knuckles\Scribe\Extracting\Strategies\StaticData::withSettings(data: [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ]),
         ],
         'urlParameters' => [
-            ...Defaults::URL_PARAMETERS_STRATEGIES,
+            ...\Knuckles\Scribe\Config\Defaults::URL_PARAMETERS_STRATEGIES,
         ],
         'queryParameters' => [
-            ...Defaults::QUERY_PARAMETERS_STRATEGIES,
+            ...\Knuckles\Scribe\Config\Defaults::QUERY_PARAMETERS_STRATEGIES,
         ],
         'bodyParameters' => [
             // Prioridad: primero FormRequests, luego validaciones inline, luego docblocks
-            ...Defaults::BODY_PARAMETERS_STRATEGIES,
+            ...\Knuckles\Scribe\Config\Defaults::BODY_PARAMETERS_STRATEGIES,
             // Asegurar que GetFromInlineValidator esté activo para detectar $request->validate()
         ],
-        'responses' => configureStrategy(
-            Defaults::RESPONSES_STRATEGIES,
-            Strategies\Responses\ResponseCalls::withSettings(
+        'responses' => \Knuckles\Scribe\Config\configureStrategy(
+            \Knuckles\Scribe\Config\Defaults::RESPONSES_STRATEGIES,
+            \Knuckles\Scribe\Extracting\Strategies\Responses\ResponseCalls::withSettings(
                 only: ['GET *'],
                 // Recommended: disable debug mode in response calls to avoid error stack traces in responses
                 config: [
@@ -206,7 +307,7 @@ return [
             )
         ),
         'responseFields' => [
-            ...Defaults::RESPONSE_FIELDS_STRATEGIES,
+            ...\Knuckles\Scribe\Config\Defaults::RESPONSE_FIELDS_STRATEGIES,
         ]
     ],
 
