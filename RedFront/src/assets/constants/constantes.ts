@@ -2,11 +2,11 @@
 // const baseUrlBackend: string = "http://localhost:8000";
 
 const ModeProduccion: boolean = false;
-const Desarrollo: boolean = true;
+const ModeLocal: boolean = false;
 
 let baseUrl: string;
 let baseUrlBackend: string;
-if (Desarrollo) {
+if (ModeLocal) {
     baseUrl = "http://localhost:3000";
     baseUrlBackend = "http://localhost:8000";
 }
