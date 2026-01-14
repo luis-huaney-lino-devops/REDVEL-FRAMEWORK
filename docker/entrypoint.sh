@@ -76,18 +76,86 @@ esac
 log_info "🧩 Rol detectado: $ROLE"
 
 # =====================================================
+# CONFIGURACIÓN DE ENTORNO (MOVIDO AL INICIO)
+# =====================================================
+
+log_section "CONFIGURANDO ENTORNO"
+
+# =====================================================
+# LECTURA DE CONFIGURACIÓN (.deploy-mode)
+# =====================================================
+
+DEPLOY_MODE_FILE="/etc/redvel/.deploy-mode"
+
+if [ -f "$DEPLOY_MODE_FILE" ]; then
+    log_info "📄 Leyendo configuración de $DEPLOY_MODE_FILE"
+    
+    # Leer variables del archivo ignorando comentarios
+    FILE_DEPLOY_MODE=$(grep "^DEPLOY_MODE=" "$DEPLOY_MODE_FILE" | cut -d '=' -f2)
+    FILE_FIRST_INSTALL=$(grep "^PRIMERA_INSTALACION=" "$DEPLOY_MODE_FILE" | cut -d '=' -f2)
+    
+    if [ -n "$FILE_DEPLOY_MODE" ]; then
+        DEPLOY_MODE="$FILE_DEPLOY_MODE"
+    fi
+    
+    if [ -n "$FILE_FIRST_INSTALL" ]; then
+        PRIMERA_INSTALACION="$FILE_FIRST_INSTALL"
+    fi
+else
+    # Si no existe, intentar determinar por variables de entorno o default
+    log_warning "⚠️ Archivo .deploy-mode no encontrado en $DEPLOY_MODE_FILE"
+fi
+
+# Limpiar .env anterior para forzar la actualización
+if [ -f ".env" ]; then
+    log_info "🧹 Eliminando .env anterior para regenerarlo..."
+    rm .env
+fi
+
+DEPLOY_MODE="${DEPLOY_MODE:-production}"
+log_info "⚙️  Modo de despliegue: $DEPLOY_MODE"
+
+if [ "$DEPLOY_MODE" = "development" ] && [ -f ".env.developer" ]; then
+    log_info "📄 Copiando .env.developer -> .env"
+    cp .env.developer .env
+elif [ "$DEPLOY_MODE" = "production" ] && [ -f ".env.production" ]; then
+    log_info "📄 Copiando .env.production -> .env"
+    cp .env.production .env
+elif [ -f ".env.production" ]; then
+    log_info "📄 Copiando .env.production -> .env (fallback)"
+    cp .env.production .env
+else
+    log_warn "No se encontro archivo de entorno especifico, buscando generic .env..."
+    if [ ! -f ".env" ]; then
+         log_error "❌ No se encontró ningún archivo .env, .env.production, .env.developer. El contenedor no puede iniciar."
+         exit 1
+    fi
+fi
+
+# Cargar variables desde el .env recién creado/existente
+if [ -f ".env" ]; then
+    set -a
+    . ./.env
+    set +a
+    log_info "✅ Variables de entorno cargadas"
+fi
+
+# Generar Key si falta
+if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ]; then
+    if ! grep -q "^APP_KEY=" .env || [ "$(grep "^APP_KEY=" .env | cut -d '=' -f2)" = "" ]; then
+        log_info "🔑 Generando APP_KEY..."
+        NEW_KEY="base64:$(openssl rand -base64 32)"
+        echo "APP_KEY=$NEW_KEY" >> .env
+        export APP_KEY="$NEW_KEY"
+    fi
+fi
+
+
+# =====================================================
 # VERIFICAR VARIABLES DE ENTORNO CRÍTICAS
 # =====================================================
 
 log_info "🔍 Verificando variables de entorno..."
-
-# Cargar variables desde .env si existen
-if [ -f ".env" ]; then
-    log_info "📄 Cargando variables desde .env..."
-    set -a
-    . ./.env
-    set +a
-fi
 
 # Verificar variables críticas
 if [ -z "$DB_HOST" ]; then
@@ -124,153 +192,18 @@ log_info "   REDIS_HOST: ${REDIS_HOST:-redis}"
 log_info "   REDIS_PORT: ${REDIS_PORT:-6379}"
 log_info "   APP_ENV: ${APP_ENV:-NO DEFINIDO}"
 
-# =====================================================
-# ESPERAR SERVICIOS (BD y Redis)
-# =====================================================
-
-log_info "⏳ Esperando a que MySQL esté listo..."
-log_info "   Host: ${DB_HOST:-mysql} | BD: ${DB_DATABASE:-NO DEFINIDO}"
-
-# Esperar a que MySQL esté disponible
-wait_for_mysql() {
-    local host="${1:-mysql}"
-    local port="${2:-3306}"
-    local user="${3:-root}"
-    local password="$4"
-    local max_retries=60
-    local count=0
-
-    while [ $count -lt $max_retries ]; do
-        if mysqladmin ping -h "$host" -P "$port" -u "$user" -p"$password" --silent; then
-            log_success "MySQL está listo!"
-            return 0
-        fi
-        count=$((count + 1))
-        echo -n "."
-        sleep 2
-    done
-
-    log_error "❌ No se pudo conectar a MySQL después de $((max_retries * 2)) segundos."
-    return 1
-}
-
-# Usar values por defecto si no están definidos
-DB_HOST="${DB_HOST:-mysql}"
-DB_PORT="${DB_PORT:-3306}"
-DB_USERNAME="${DB_USERNAME:-root}"
-
-wait_for_mysql "$DB_HOST" "$DB_PORT" "$DB_USERNAME" "$DB_PASSWORD"
-
-# =====================================================
-# ESPERAR REDIS
-# =====================================================
-log_info "⏳ Esperando a que Redis esté listo..."
-REDIS_HOST="${REDIS_HOST:-redis}"
-REDIS_PORT="${REDIS_PORT:-6379}"
-
-wait_for_redis() {
-    local host="$1"
-    local port="$2"
-    local max_retries=30
-    local count=0
-
-    while [ $count -lt $max_retries ]; do
-        if timeout 1 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
-             log_success "Redis está listo!"
-             return 0
-        fi
-        count=$((count + 1))
-        sleep 1
-    done
-    
-    log_warning "⚠️  Redis no responde, continuando de todas formas..."
-    return 1
-}
-
-wait_for_redis "$REDIS_HOST" "$REDIS_PORT"
-
-# =====================================================
-# CONFIGURAR DIRECTORIOS
-# =====================================================
-
-log_info "📁 Configurando directorios y permisos..."
-mkdir -p storage/framework/{sessions,views,cache,testing}
-mkdir -p storage/logs
-mkdir -p storage/app/public
-mkdir -p bootstrap/cache
-mkdir -p public/storage
-
-chown -R www-data:www-data storage bootstrap/cache public/storage 2>/dev/null || true
-chmod -R 775 storage bootstrap/cache 2>/dev/null || true
-
-# =====================================================
-# CONFIGURACIÓN DE ENTORNO
-# =====================================================
-
-# =====================================================
-# LECTURA DE CONFIGURACIÓN (.deploy-mode)
-# =====================================================
-
-DEPLOY_MODE_FILE="/etc/redvel/.deploy-mode"
-
-if [ -f "$DEPLOY_MODE_FILE" ]; then
-    log_info "📄 Leyendo configuración de $DEPLOY_MODE_FILE"
-    
-    # Leer variables del archivo ignorando comentarios
-    FILE_DEPLOY_MODE=$(grep "^DEPLOY_MODE=" "$DEPLOY_MODE_FILE" | cut -d '=' -f2)
-    FILE_FIRST_INSTALL=$(grep "^PRIMERA_INSTALACION=" "$DEPLOY_MODE_FILE" | cut -d '=' -f2)
-    
-    if [ -n "$FILE_DEPLOY_MODE" ]; then
-        DEPLOY_MODE="$FILE_DEPLOY_MODE"
-    fi
-    
-    if [ -n "$FILE_FIRST_INSTALL" ]; then
-        PRIMERA_INSTALACION="$FILE_FIRST_INSTALL"
-    fi
+# DEFINIR COMANDO MYSQL GLABALMENTE
+if command -v mariadb >/dev/null 2>&1; then
+    MYSQL_CMD="mariadb"
+    SSL_ARGS="--skip-ssl"
+elif mysql --version 2>&1 | grep -q "MariaDB"; then
+    MYSQL_CMD="mysql"
+    SSL_ARGS="--skip-ssl"
 else
-    log_warning "⚠️ Archivo .deploy-mode no encontrado en $DEPLOY_MODE_FILE"
+    MYSQL_CMD="mysql"
+    SSL_ARGS="--ssl-mode=DISABLED"
 fi
 
-# Limpiar .env anterior para forzar la actualización
-if [ -f ".env" ]; then
-    log_info "🧹 Eliminando .env anterior para regenerarlo..."
-    rm .env
-fi
-
-DEPLOY_MODE="${DEPLOY_MODE:-production}"
-log_info "⚙️  Modo de despliegue: $DEPLOY_MODE"
-
-if [ "$DEPLOY_MODE" = "development" ] && [ -f ".env.developer" ]; then
-    log_info "📄 Copiando .env.developer -> .env"
-    cp .env.developer .env
-elif [ "$DEPLOY_MODE" = "production" ] && [ -f ".env.production" ]; then
-    log_info "📄 Copiando .env.production -> .env"
-    cp .env.production .env
-elif [ -f ".env.production" ]; then
-    log_info "📄 Copiando .env.production -> .env (fallback)"
-    cp .env.production .env
-else
-    log_error "❌ No se encontró el archivo de entorno adecuado para $DEPLOY_MODE"
-    exit 1
-fi
-
-# Cargar variables desde el .env recién creado
-if [ -f ".env" ]; then
-    set -a
-    . ./.env
-    set +a
-    log_info "✅ Variables de entorno cargadas"
-fi
-
-# Generar Key si falta
-if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ]; then
-    if ! grep -q "^APP_KEY=" .env || [ "$(grep "^APP_KEY=" .env | cut -d '=' -f2)" = "" ]; then
-        log_info "🔑 Generando APP_KEY..."
-        NEW_KEY="base64:$(openssl rand -base64 32)"
-        echo "APP_KEY=$NEW_KEY" >> .env
-        export APP_KEY="$NEW_KEY"
-    fi
-fi
 
 if [ "$ROLE" = "app" ]; then
     # =====================================================
