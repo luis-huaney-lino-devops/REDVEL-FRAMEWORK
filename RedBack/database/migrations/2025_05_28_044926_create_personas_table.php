@@ -22,7 +22,6 @@ return new class extends Migration
             $table->string('correo', 100)->nullable();
             $table->string('telefono', 15)->nullable();
             $table->text('direccion')->nullable();
-
             $table->integer('fk_idgeneros')->index('fk_generos1');
         });
     }
